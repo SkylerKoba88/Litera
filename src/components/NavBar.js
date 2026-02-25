@@ -38,6 +38,9 @@ class NavBar extends LitElement {
             #left {
                 display: flex;
             }
+            img {
+                max-width: 80px;
+            }
         `;
     }
     
@@ -52,7 +55,7 @@ class NavBar extends LitElement {
                     <a>home</a>
                     <a>communities</a>
                     <a>library</a>
-                    <a>profile</a>
+                    <button id="navToProfile">profile</button>
                 </div>
             </div>
         `;
