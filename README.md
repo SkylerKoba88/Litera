@@ -176,9 +176,11 @@ This file opens a connection to the MySQL database for our project. We set this 
 Our group is working on adding database connection routes to `server.ts`.
 
 # TestHarness
-To test our code, we created a file called `testharness.test.js` in the folder `tests`. As we are largely using vanilla JavaScript on VS Code, we installed Jest to run our test cases by running the following code in CMD:  
+To test our code, we created files called `testserver.test.js` and `testimagekit.test.js` in the folder `testharness`. As we are largely using vanilla JavaScript on VS Code, we installed Jest to run our test cases by running the following code in CMD:  
 
-    `npm install jest --save-dev`
+    `npm install --save-dev ts-jest @types/jest
+    npx ts-jest config:init
+    `
 
 Then we added the jest script dependency in `package.json` under `scripts`.
 

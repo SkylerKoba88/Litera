@@ -2,9 +2,9 @@
 
 import ImageKit, { toFile, type Uploadable }from '@imagekit/nodejs';
 
-const PRIVATE_KEY = process.env.IMAGEKIT_PRIVATE_KEY;
-const PUBLIC_KEY = process.env.IMAGEKIT_PUBLIC_KEY;
-const URL_ENDPOINT = process.env.IMAGEKIT_URL_ENDPOINT;
+const PRIVATE_KEY = process.env.VITE_IMAGEKIT_PRIVATE_KEY;
+const PUBLIC_KEY = process.env.VITE_IMAGEKIT_PUBLIC_KEY;
+const URL_ENDPOINT = process.env.VITE_IMAGEKIT_URL_ENDPOINT;
 
 if (!PRIVATE_KEY) throw new Error('Missing IMAGEKIT_PRIVATE_KEY');
 if (!URL_ENDPOINT) throw new Error('Missing IMAGEKIT_URL_ENDPOINT');
