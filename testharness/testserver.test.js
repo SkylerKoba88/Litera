@@ -1,4 +1,17 @@
 // THIS IS WHERE WE WILL GENERATE TEST CODE FOR SERVER.ts
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+// temporary dist
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'litera-'));
+fs.mkdirSync(path.join(tmp, 'dist'), { recursive: true });
+fs.writeFileSync(path.join(tmp, 'dist', 'index.html'), '<!doctype html><title>ok</title>');
+
+process.chdir(tmp);
+
+process.env.NODE_ENV = 'test';
+
 // mock external functions
 jest.mock("../imagekit", () => ({
   __esModule: true,
@@ -16,11 +29,10 @@ jest.mock("../imagekit", () => ({
   toFile: jest.fn(async () => "mock-uploadable")
 }));
 //mock middleware
-jest.mock("fs", () => ({ 
-    createReadStream: jest.fn(() => ({ 
-        on: jest.fn(), pipe: jest.fn() 
-    })) 
-}));
+jest.mock("fs", () => { 
+    const actual = jest.requireActual('fs');
+    return { ...actual,};
+});
 
 const imagekit = require("../imagekit");
 const request = require("supertest");
