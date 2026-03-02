@@ -2,6 +2,7 @@
 
 import ImageKit, { toFile, type Uploadable }from '@imagekit/nodejs';
 import dotenv from "dotenv"; 
+import { createReadStream } from 'node:fs';
 dotenv.config();
 
 function ensureEnv() {
@@ -82,7 +83,7 @@ export async function uploadFilePath(
   });
 
   const resp = await ik.files.upload({
-    file: await import('fs').then((m) => m.createReadStream(pathOnDisk)),
+    file: createReadStream(pathOnDisk),
     fileName: options?.fileName ?? `upload-${Date.now()}`,
     folder: options?.folder,
     useUniqueFileName: options?.useUniqueFileName ?? true,
