@@ -3,6 +3,8 @@
 import { html, css, type TemplateResult } from "lit";
 import { until } from 'lit/directives/until.js';
 import { fetchUserById, updateUserInformation, checkUniqueUsernameEmail } from '../Services';
+import '../components/CommunityCard.js';
+import '../components/CommunityContainer.js';
 import '../components/AppAlert';
 
 type AlertType = 'success' | 'error' | 'info' | 'warning';
@@ -184,10 +186,7 @@ export const ProfileEditPage = ({ currentPath = '/profile/edit' }: ProfileEditPr
 
     return html`
       <style>${styles}</style>
-      <svg xmlns="./images/Edit.svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="./images/Edit.svg"></path>
-      </svg>
-      <button @click=${() => window.location.hash = '/'}>&larr; Back</button>
+      <button @click=${() => window.location.hash = '/profile'}>&larr; Back</button>
       <div id="card">
         <div class="banner">
           <img id="profileImg" src="https://t3.ftcdn.net/jpg/02/22/85/16/360_F_222851624_jfoMGbJxwRi5AWGdPgXKSABMnzCQo9RN.jpg" />
@@ -196,14 +195,21 @@ export const ProfileEditPage = ({ currentPath = '/profile/edit' }: ProfileEditPr
 
         <div class="personal-info">
           ${personalInfoTemplate}
-          <button @click=${() => window.location.hash = '/profile/edit'}>
+          <button @click=${onSave}>
             Save Changes
         </button>
         </div>
 
         <div class="lists">
             <h4>My Communities</h4>
-            insert widget here
+            <community-container>
+                <community-card></community-card>
+                <community-card></community-card> 
+                <community-card></community-card>  
+                <!-- Ideally the insertion of community card should be in
+                 community-container, this is just so we have something for the
+                 presentation + testing -->
+            </community-container>
             <h4>My Favorites</h4>
             insert widget here
         </div>

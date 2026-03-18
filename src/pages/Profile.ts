@@ -116,8 +116,6 @@ export const ProfilePage = ({ currentPath = '/profile' }: ProfileProps): Templat
 
     return html`
       <style>${styles}</style>
-      <button @click=${() => window.location.hash = '/'}>&larr; Back</button>
-
       <div id="card">
         <h2>My Profile</h2>
 

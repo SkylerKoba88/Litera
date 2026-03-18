@@ -21,6 +21,8 @@ class CommunityContainer extends LitElement {
         return css`
         .card{
            display:flex;
+           gap: 16px;
+           flex-wrap: wrap;
         }
 
         ::slotted(*){
