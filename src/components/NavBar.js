@@ -1,7 +1,7 @@
 // This file defines and styles the NavBar element
 import { html, css, LitElement } from "lit";
 import ProfileIcon from '../images/Profile.svg';
-import BookCaseIcon from '../images/Bookcase.svg';
+import BookCaseIcon from '../images/BookCase.svg';
 
 const NAV_LINKS = [
     {name: 'home', path: '/'},
