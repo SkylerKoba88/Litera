@@ -1,4 +1,5 @@
 import { html, css, LitElement } from "lit";
+import GoArrow from '../images/Caret-Right.svg';
 
 class CommunityCard extends LitElement {
     static get tag() {
@@ -25,8 +26,21 @@ class CommunityCard extends LitElement {
             .container {
                 display: flex;
                 flex-direction: column;
+                overflow: hidden;
                 width: 15em;
                 height: 10em;
+                transition: ease-out .2s;
+            }
+
+            .container:hover{
+                transition: ease-in .2s;
+                height: 10em;
+
+                .info-button{
+                    width: 100%;
+                    background-color: var(--color-5);
+                    transition: ease-in .2s;
+                }
             }
 
             .thumbnail{
@@ -48,6 +62,7 @@ class CommunityCard extends LitElement {
 
             .content-container{
                 display: flex;
+                height: 100%;
             }
 
             .title-container{
@@ -56,7 +71,23 @@ class CommunityCard extends LitElement {
 
             h3{
                 margin: .5em;
+                color: var(--color-3);
+                transition: ease-out .2s;
             }
+
+            button{
+                border: 0px;
+                justify-content: center; /* Centers horizontally */
+                align-items: center;
+                transition: ease-out .2s;
+            }
+
+            button img{
+                height: auto;
+                max-width: 100%;
+                margin: auto;
+            }
+
         `;
     }
 
@@ -70,10 +101,9 @@ class CommunityCard extends LitElement {
              <div class="thumbnail">
                 <img src="${this.thumbnail}" alt="${this.name} thumbnail">
             </div>
-            <div class="info-button">
-                <p>></p>
-            </div>
-           </div>
+            <button class="info-button">
+                <img src="${GoArrow}">
+            </button>
         </div>
         `;
     }
