@@ -196,7 +196,7 @@ export const ProfileEditPage = ({ currentPath = '/profile/edit' }: ProfileEditPr
 
         <div class="personal-info">
           ${personalInfoTemplate}
-          <button @click=${() => window.location.hash = '/profile/edit'}>
+          <button @click=${onSave}>
             Save Changes
         </button>
         </div>
