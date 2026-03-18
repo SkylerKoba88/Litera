@@ -1,5 +1,6 @@
 // This file defines and styles the NavBar element
 import { html, css, LitElement } from "lit";
+import ProfileIcon from '../images/Profile.svg';
 
 const NAV_LINKS = [
     {name: 'home', path: '/'},
@@ -61,6 +62,8 @@ class NavBar extends LitElement {
             :host {
                 display: block;
                 width: 100%;
+                color: white;
+                //font-family: "K2D Mono";
             }
             nav#container {
                 display: flex;
@@ -80,18 +83,23 @@ class NavBar extends LitElement {
                 display: flex;
                 justify-content: flex-end;
                 width: 40%;
-
+                align-items: center;
             }
-            #navLink{
+            button{
                 background-color: var(--color-3);
                 padding: 1em;
                 margin-right: 1em;
                 border-radius: 50px;
             }
-            #navLink:hover{
+            button:hover{
                 background-color: var(--color-5);
                 color: var(--color-text-light);
                 transition: 0.3s ease;
+            }
+            button.active {
+                background-color: var(--color-5);
+                color: var(--color-text-light); 
+                font-weight: bold;
             }
             img {
                 max-width: 80px;
@@ -123,6 +131,7 @@ class NavBar extends LitElement {
                             </button>
                         `
                     )}
+                    <img src=${this.user?.avatarUrl || ProfileIcon} alt="User Avatar" style="width: 40px; height: 40px; border-radius: 50%;">
                 </div>
             </nav>
         `
