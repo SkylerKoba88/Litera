@@ -186,7 +186,7 @@ export const ProfileEditPage = ({ currentPath = '/profile/edit' }: ProfileEditPr
 
     return html`
       <style>${styles}</style>
-      <button @click=${() => window.location.hash = '/'}>&larr; Back</button>
+      <button @click=${() => window.location.hash = '/profile'}>&larr; Back</button>
       <div id="card">
         <div class="banner">
           <img id="profileImg" src="https://t3.ftcdn.net/jpg/02/22/85/16/360_F_222851624_jfoMGbJxwRi5AWGdPgXKSABMnzCQo9RN.jpg" />
