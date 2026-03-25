@@ -6,8 +6,23 @@ import { fetchUserById, updateUserInformation, checkUniqueUsernameEmail } from '
 import '../components/CommunityCard.js';
 import '../components/CommunityContainer.js';
 import '../components/AppAlert';
+import '../components/successAnimation.js';
 
 type AlertType = 'success' | 'error' | 'info' | 'warning';
+
+function showSuccessAnimation() {
+  let animEl = document.querySelector('success-animation') as any;
+
+  if (!animEl) {
+    animEl = document.createElement('success-animation');
+    document.body.appendChild(animEl);
+  }
+
+  animEl.play?.();
+
+  return animEl;
+}
+``
 
 function showAppAlert(message: string, type: AlertType = 'info', autoClose = true) {
   let alertEl = document.querySelector('app-alert') as HTMLElement | null;
@@ -71,10 +86,16 @@ export const ProfileEditPage = ({ currentPath = '/profile/edit' }: ProfileEditPr
           throw new Error('Update failed');
         }
 
-        const alertEl = showAppAlert('Profile saved', 'success', true);
-        alertEl.addEventListener('close', () => {
-          window.location.hash = '/profile';
-        }, { once: true });
+        
+        const animEl = showSuccessAnimation();
+        animEl.addEventListener(
+            'finished',
+        () => {
+            window.location.hash = '/profile';
+        },
+        { once: true }
+        );
+
       } catch (err) {
         console.error(err);
         showAppAlert('Save failed: ' + ((err as Error).message || err), 'error', false);

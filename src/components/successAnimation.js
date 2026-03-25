@@ -33,7 +33,7 @@ class SuccessAnimation extends LitElement {
         top: -150vh;
         bottom: 100%;
         width: 2px;
-        background: linear-gradient(#999, #666);
+        background-color: white;
     }
 
     .disco-ball {
@@ -210,9 +210,21 @@ class SuccessAnimation extends LitElement {
     setTimeout(() => {
         clearInterval(burstInterval);
         wrapper.remove();
-        this.renderRoot.querySelector("#content").setAttribute("style", "background-color: transparent");
+        this.renderRoot
+            .querySelector("#content")
+            .setAttribute("style", "background-color: transparent");
+
+        this.dispatchEvent(new CustomEvent('finished', {
+            bubbles: true,
+            composed: true
+        }));
     }, 5000);
   };
+
+  async play() {
+    await this.updateComplete;
+    this.createAnimation();
+  }
 
   render() {
     return html`
