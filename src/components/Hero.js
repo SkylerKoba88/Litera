@@ -1,5 +1,6 @@
 // This file defines and styles the NavBar element
 import { html, css, LitElement } from "lit";
+import '../components/LoginButton.js';
 
 class TitleHero extends LitElement {
 
@@ -28,7 +29,7 @@ class TitleHero extends LitElement {
                     rgba(0, 0, 0, 0.8),
                     rgba(0, 0, 0, 0.2)
                 ),
-                url('https://images.pexels.com/photos/3747505/pexels-photo-3747505.jpeg');
+                url('src/images/heroGradient.svg');
                 background-size: cover;
                 background-position: center;
                 align-content: center;
@@ -47,6 +48,13 @@ class TitleHero extends LitElement {
     render() {
         return html `
         <h1>Welcome to Litera</h1>
+        <p>Join thousands of readers having personalized discussions and discovering new favorites</p>
+        <div>
+            <login-button mode="start"></login-button>
+        </div>
+
+        <p>Already have an account?</p>
+        <login-button mode="login"></login-button>
         `
     }
 }

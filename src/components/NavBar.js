@@ -119,28 +119,29 @@ class NavBar extends LitElement {
             }
 
             .subtabs {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            background: rgba(0, 0, 0, 0.85);
-            padding: 8px 0;
-            border-radius: 6px;
-            min-width: 200px;
-            z-index: 100;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                background: rgba(0, 0, 0, 0.85);
+                padding: 8px 0;
+                border-radius: 6px;
+                min-width: 200px;
+                z-index: 100;
+                transition: 2s ease;
             }
 
             .subtabs button {
-            display: block;
-            width: 100%;
-            padding: 8px 12px;
-            background: none;
-            border: none;
-            color: white;
-            text-align: left;
+                display: block;
+                width: 100%;
+                padding: 8px 12px;
+                background: none;
+                border: none;
+                color: white;
+                text-align: left;
             }
 
             .subtabs button:hover {
-            background-color: var(--color-3);
+                background-color: var(--color-1);
             }
             img {
                 max-width: 80px;

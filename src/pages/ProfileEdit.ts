@@ -22,7 +22,6 @@ function showSuccessAnimation() {
 
   return animEl;
 }
-``
 
 function showAppAlert(message: string, type: AlertType = 'info', autoClose = true) {
   let alertEl = document.querySelector('app-alert') as HTMLElement | null;

@@ -53,6 +53,8 @@ class SuccessAnimation extends LitElement {
         width: 100%;
         height: 100%;
         animation: flicker 1.5s infinite alternate;
+        outline: 1px solid transparent;
+        outline-offset: -1px;
     }
 
     .light-grid {

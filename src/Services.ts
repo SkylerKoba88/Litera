@@ -1,5 +1,19 @@
 const API_BASE = import.meta.env.VITE_API_BASE ?? '';
 
+export type CreateUserPayload = {
+  username: string;
+  firstname: string;
+  lastname: string;
+  email: string;
+  dob: string | null;
+  password: string;
+};
+
+export type LoginPayload = {
+  identifier: string;
+  password: string;
+};
+
 function handleResponse(raw: string, res: Response) {
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${raw}`);
   return JSON.parse(raw);
@@ -39,6 +53,27 @@ export async function updateUserInformation(
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, firstname, lastname, email, dob: dobValue })
+  });
+  const raw = await res.text();
+  return handleResponse(raw, res);
+}
+
+export async function loginUser(payload: LoginPayload) {
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const raw = await res.text();
+  return handleResponse(raw, res);
+}
+
+export async function createUser(payload: CreateUserPayload) {
+  const res = await fetch(`${API_BASE}/api/users`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
   });
   const raw = await res.text();
   return handleResponse(raw, res);

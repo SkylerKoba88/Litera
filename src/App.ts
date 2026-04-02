@@ -9,6 +9,8 @@ import LoginPage from "./pages/Login";
 import ProfileEditPage from "./pages/ProfileEdit";
 import CommunityCreationPage from "./pages/CommunityCreation";
 import './components/NavBar.js';
+import './components/AuthOverlay.js';
+
 
 @customElement('app-root')
 export class App extends LitElement {
@@ -17,6 +19,7 @@ export class App extends LitElement {
     connectedCallback(): void {
         super.connectedCallback();
         window.addEventListener('hashchange', this.handleHashChange);
+
     }
 
     disconnectedCallback(): void {
@@ -41,6 +44,15 @@ export class App extends LitElement {
         } else {
             this.currentPath = this.getPathFromHash();
         }
+    };
+
+    private openAuth = (e: CustomEvent) => {
+        const overlay = this.renderRoot.querySelector(
+        "auth-overlay"
+        ) as HTMLElement & { open: boolean, mode: string };
+        overlay.mode = e.detail.mode;
+        overlay.open = true;
+        
     };
 
     private renderPage(): TemplateResult {
@@ -68,13 +80,15 @@ export class App extends LitElement {
     
     render(): TemplateResult {
         return html`
-            <div class="container">
+
+            <div class="container" @open-auth=${this.openAuth}>
                 <nav-bar .currentPath=${this.currentPath} .onNavigate=${this.navigate}></nav-bar>
                 <main class="content">
                     ${this.renderPage()}
                 </main>
                 
             </div>
+            <auth-overlay></auth-overlay>
             <app-footer></app-footer>
         `;
     }

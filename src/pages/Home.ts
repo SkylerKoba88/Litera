@@ -32,6 +32,7 @@ export const HomePage = ({ currentPath = '/' }: HomeProps): TemplateResult => {
         }
         img {
             width: 100%;
+            height: 200px;
             max-height: 250px;
             object-fit: cover;
         }
@@ -46,10 +47,6 @@ export const HomePage = ({ currentPath = '/' }: HomeProps): TemplateResult => {
         </div>
 
         <div class="content">
-            <div class="our-mission">
-                <h2>Our Mission</h2>
-                <p>To provide a platform for book lovers to discover communities to review and share their favorite reads.</p>
-            </div>
             <div class="features">
                 <h2>Features</h2>
                 <ul>
@@ -58,20 +55,20 @@ export const HomePage = ({ currentPath = '/' }: HomeProps): TemplateResult => {
                         <h4>Discover new books and authors</h4>
                     </li>
                     <li>
-                        <img src="https://images.pexels.com/photos/31632300/pexels-photo-31632300.jpeg">
+                        <img src="https://images.pexels.com/photos/4861347/pexels-photo-4861347.jpeg">
                         <h4>Connect with other book lovers in real time</h4>
                     </li>
                     <li>
-                        <img src="https://images.pexels.com/photos/31632300/pexels-photo-31632300.jpeg">
+                        <img src="https://images.pexels.com/photos/6499045/pexels-photo-6499045.jpeg">
                         <h4>Track your favorites</h4>
                     </li>
                 </ul>
             </div>
-            <button @click=${(e: Event) => {
+            <!--<button @click=${(e: Event) => {
                 const root = (e.currentTarget as HTMLElement).getRootNode() as ShadowRoot;
                 const anim = root.querySelector("#successAnim") as any;
                 anim?.createAnimation();
-            }}>Create Animation</button>
+            }}>Create Animation</button>-->
 
         </div>
     `;
