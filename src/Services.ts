@@ -1,5 +1,10 @@
 const API_BASE = import.meta.env.VITE_API_BASE ?? '';
 
+function handleResponse(raw: string, res: Response) {
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${raw}`);
+  return JSON.parse(raw);
+}
+
 export type CreateUserPayload = {
   username: string;
   firstname: string;
@@ -13,11 +18,6 @@ export type LoginPayload = {
   identifier: string;
   password: string;
 };
-
-function handleResponse(raw: string, res: Response) {
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${raw}`);
-  return JSON.parse(raw);
-}
 
 export async function fetchUserById(id:number) {
   const res = await fetch(`${API_BASE}/api/users/${id}`);
@@ -59,7 +59,7 @@ export async function updateUserInformation(
 }
 
 export async function loginUser(payload: LoginPayload) {
-  const res = await fetch(`${API_BASE}/api/auth/login`, {
+  const res = await fetch(`/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -70,7 +70,7 @@ export async function loginUser(payload: LoginPayload) {
 }
 
 export async function createUser(payload: CreateUserPayload) {
-  const res = await fetch(`${API_BASE}/api/users`, {
+  const res = await fetch('/api/users', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)

@@ -1,9 +1,11 @@
 "use strict";
+import bcrypt from 'bcrypt';
 // This file handles routes to server-side
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const path_1 = __importDefault(require("path"));
@@ -115,6 +117,113 @@ app.put('/api/users/:id', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+// create user
+app.post('/api/users', async (req, res) => {
+  try {
+    const {
+      firstname,
+      lastname,
+      dob,
+      username,
+      email,
+      password,
+    } = req.body ?? {};
+
+    // Basic validation
+    if (!username || !email || !password) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+      });
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+
+    // Insert user
+    const [result] = await pool.query(
+      `
+      INSERT INTO users
+        (firstname, lastname, dob, username, email, password)
+      VALUES (?, ?, ?, ?, ?, ?)
+      `,
+      [firstname, lastname, dob ?? null, username, email, passwordHash]
+    );
+
+    // Respond with safe user object
+    res.status(201).json({
+      id: result.insertId,
+      username,
+      email,
+    });
+  } catch (err) {
+    console.error('Create user error:', err);
+
+    // MySQL duplicate key error (username/email unique constraint)
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({
+        error: 'Username or email already exists',
+      });
+    }
+
+    res.status(500).json({
+      error: 'Server error',
+    });
+  }
+});
+
+//login user
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { identifier, password } = req.body ?? {};
+
+    if (!identifier || !password) {
+      return res.status(400).json({
+        error: 'Identifier and password required',
+      });
+    }
+
+    // Find user by username OR email
+    const [rows] = await pool.query(
+      `
+      SELECT id, username, email, password
+      FROM users
+      WHERE username = ? OR email = ?
+      LIMIT 1
+      `,
+      [identifier, identifier]
+    );
+
+    if (!rows.length) {
+      return res.status(401).json({
+        error: 'Invalid credentials',
+      });
+    }
+
+    const user = rows[0];
+
+    // Compare password
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) {
+      return res.status(401).json({
+        error: 'Invalid credentials',
+      });
+    }
+
+    // Successful login
+    res.json({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({
+      error: 'Server error',
+    });
+  }
+});
+
+
 // imagekit
 app.get('/api/imagekit/auth', (_req, res) => {
     res.json((0, imagekit_1.getAuthParams)());
