@@ -190,3 +190,15 @@ To run the tests in the `testharness` folder, type the following into CMD/termin
 | #hnk5111       | Hannah Kresefski | worked on project detailed design & code debugging|
 | #amf7248       | Alyssa Foran | projec detailed design & code debugging |
 | #sfk5879       | Skyler Koba | Created & Wrote README.md, created testharness folder and test files |
+
+
+# The Book Club: M03-A04 Implemented Design Patterns
+
+
+# Team Contribution
+| Team_Member_ID | Member_Name | Design_Pattern_Implemented | Classes_/_Interfaces_implementing_the_Design_Pattern |
+| -------------- | ----------- | ------------ |  ------------ |
+| #saj5610       | Karis Jones |  |  |
+| #hnk5111       | Hannah Kresefski | Observer (OOP), Tabbed Navigation (UI) | LibraryManager (BookCard.jsx), LibraryObserver (Services.ts), LibraryApp (App.tsx), NavBar.js (all pages) |
+| #amf7248       | Alyssa Foran |  |  |
+| #sfk5879       | Skyler Koba |  |  |
