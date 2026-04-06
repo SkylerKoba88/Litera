@@ -135,8 +135,8 @@ class BookCard extends LitElement {
                 {book.favorite ? "Unfavorite" : "Favorite"}
             </button> -->
 
-            <!-- Someone who knows React will have to debug this, I don't know
-             how to refactor this without refactoring all the methods -->
+            <!-- Unable to fix this withou refactoring every method and I do not know React +
+             How the App.tsx works -->
         `;
     }
 
