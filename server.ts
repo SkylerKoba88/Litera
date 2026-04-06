@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { getAuthParams, uploadBuffer} from './imagekit';
 import mysql from 'mysql2/promise';
+import bcrypt from 'bcrypt';
 
 const app = express();
 app.use(cors({ origin: process.env.ALLOWED_ORIGIN ?? '*', credentials: true}));
@@ -149,6 +150,58 @@ app.post('/api/imagekit/upload-base64', async (_req, res) => {
         res.status(500).json({ error: 'Upload failed' });
     }
 });
+
+const BCRYPT_ROUNDS = 12;
+//const isValid = await bcrypt.compare(inputPassword, user.password);
+
+//create user
+app.post('/api/users', async (req, res) => {
+  const { username, email, firstname, lastname, dob, password} = req.body || {};
+
+  // basic validation
+  if (!username || !USERNAME_REGEX.test(username)) {
+    return res.status(400).json({ error: 'Bad username' });
+  }
+
+  if (!email || !EMAIL_REGEX.test(email)) {
+    return res.status(400).json({ error: 'Bad email' });
+  }
+
+  try {
+    // check uniqueness
+    const conflicts = await checkUniqueUsernameEmail(username, email);
+    if (conflicts.length > 0) {
+      return res.status(409).json({
+        error: 'Username or email already in use',
+        conflicts,
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
+    // insert user
+    const [result] = await pool.query<mysql.ResultSetHeader>(
+      `
+      INSERT INTO users (username, email, firstname, lastname, dob, password)
+      VALUES (?, ?, ?, ?, ?, ?)
+      `,
+      [username, email, firstname, lastname, dob, passwordHash]
+    );
+
+    const newUserId = result.insertId;
+
+    const user = await getUserById(newUserId);
+
+    res.status(201).json({
+      success: true,
+      user,
+    });
+  } catch (e) {
+    console.error('create user error', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 
 // serve Vite build (connect to client)
 const distDir = path.join(process.cwd(), 'dist'); // Vite default outDir is "dist"

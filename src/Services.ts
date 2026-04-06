@@ -59,7 +59,7 @@ export async function updateUserInformation(
 }
 
 export async function loginUser(payload: LoginPayload) {
-  const res = await fetch(`/api/auth/login`, {
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -70,7 +70,7 @@ export async function loginUser(payload: LoginPayload) {
 }
 
 export async function createUser(payload: CreateUserPayload) {
-  const res = await fetch('/api/users', {
+  const res = await fetch(`${API_BASE}/api/users`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)

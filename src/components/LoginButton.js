@@ -33,6 +33,7 @@ class LoginButton extends LitElement {
     }
 
     openOverlay = () => {
+        console.log("login button clicked");
         this.dispatchEvent(new CustomEvent("open-auth", {
             bubbles: true,
             composed: true,

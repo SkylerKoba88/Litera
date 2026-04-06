@@ -1,16 +1,15 @@
 "use strict";
-import bcrypt from 'bcrypt';
 // This file handles routes to server-side
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const path_1 = __importDefault(require("path"));
 const imagekit_1 = require("./imagekit");
 const promise_1 = __importDefault(require("mysql2/promise"));
+const bcrypt_1 = __importDefault(require("bcrypt"));
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)({ origin: process.env.ALLOWED_ORIGIN ?? '*', credentials: true }));
 app.use(express_1.default.json({ limit: '10mb' }));
@@ -117,113 +116,6 @@ app.put('/api/users/:id', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
-// create user
-app.post('/api/users', async (req, res) => {
-  try {
-    const {
-      firstname,
-      lastname,
-      dob,
-      username,
-      email,
-      password,
-    } = req.body ?? {};
-
-    // Basic validation
-    if (!username || !email || !password) {
-      return res.status(400).json({
-        error: 'Missing required fields',
-      });
-    }
-
-    // Hash password
-    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-
-    // Insert user
-    const [result] = await pool.query(
-      `
-      INSERT INTO users
-        (firstname, lastname, dob, username, email, password)
-      VALUES (?, ?, ?, ?, ?, ?)
-      `,
-      [firstname, lastname, dob ?? null, username, email, passwordHash]
-    );
-
-    // Respond with safe user object
-    res.status(201).json({
-      id: result.insertId,
-      username,
-      email,
-    });
-  } catch (err) {
-    console.error('Create user error:', err);
-
-    // MySQL duplicate key error (username/email unique constraint)
-    if (err.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({
-        error: 'Username or email already exists',
-      });
-    }
-
-    res.status(500).json({
-      error: 'Server error',
-    });
-  }
-});
-
-//login user
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { identifier, password } = req.body ?? {};
-
-    if (!identifier || !password) {
-      return res.status(400).json({
-        error: 'Identifier and password required',
-      });
-    }
-
-    // Find user by username OR email
-    const [rows] = await pool.query(
-      `
-      SELECT id, username, email, password
-      FROM users
-      WHERE username = ? OR email = ?
-      LIMIT 1
-      `,
-      [identifier, identifier]
-    );
-
-    if (!rows.length) {
-      return res.status(401).json({
-        error: 'Invalid credentials',
-      });
-    }
-
-    const user = rows[0];
-
-    // Compare password
-    const ok = await bcrypt.compare(password, user.password);
-    if (!ok) {
-      return res.status(401).json({
-        error: 'Invalid credentials',
-      });
-    }
-
-    // Successful login
-    res.json({
-      id: user.id,
-      username: user.username,
-      email: user.email,
-    });
-  } catch (err) {
-    console.error('Login error:', err);
-    res.status(500).json({
-      error: 'Server error',
-    });
-  }
-});
-
-
 // imagekit
 app.get('/api/imagekit/auth', (_req, res) => {
     res.json((0, imagekit_1.getAuthParams)());
@@ -242,6 +134,45 @@ app.post('/api/imagekit/upload-base64', async (_req, res) => {
     catch (e) {
         console.error('[IK] upload failed:', e);
         res.status(500).json({ error: 'Upload failed' });
+    }
+});
+const BCRYPT_ROUNDS = 12;
+//const isValid = await bcrypt.compare(inputPassword, user.password);
+//create user
+app.post('/api/users', async (req, res) => {
+    const { username, email, firstname, lastname, dob, password } = req.body || {};
+    // basic validation
+    if (!username || !USERNAME_REGEX.test(username)) {
+        return res.status(400).json({ error: 'Bad username' });
+    }
+    if (!email || !EMAIL_REGEX.test(email)) {
+        return res.status(400).json({ error: 'Bad email' });
+    }
+    try {
+        // check uniqueness
+        const conflicts = await checkUniqueUsernameEmail(username, email);
+        if (conflicts.length > 0) {
+            return res.status(409).json({
+                error: 'Username or email already in use',
+                conflicts,
+            });
+        }
+        const passwordHash = await bcrypt_1.default.hash(password, BCRYPT_ROUNDS);
+        // insert user
+        const [result] = await pool.query(`
+      INSERT INTO users (username, email, firstname, lastname, dob, password)
+      VALUES (?, ?, ?, ?, ?, ?)
+      `, [username, email, firstname, lastname, dob, passwordHash]);
+        const newUserId = result.insertId;
+        const user = await getUserById(newUserId);
+        res.status(201).json({
+            success: true,
+            user,
+        });
+    }
+    catch (e) {
+        console.error('create user error', e);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 // serve Vite build (connect to client)

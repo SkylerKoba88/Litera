@@ -48,6 +48,7 @@ export class App extends LitElement {
     };
 
     private openAuth = (e: CustomEvent) => {
+        console.log("auth opened");
         const overlay = this.renderRoot.querySelector(
         "auth-overlay"
         ) as HTMLElement & { open: boolean, mode: string };
