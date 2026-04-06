@@ -80,6 +80,8 @@ export class App extends LitElement {
                 return HomePage({currentPath: this.currentPath});
         }
     };
+
+    // ^^ This could be the navbar component? - Alyssa
     
     render(): TemplateResult {
         return html`
