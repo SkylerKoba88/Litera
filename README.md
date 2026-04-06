@@ -192,17 +192,13 @@ To run the tests in the `testharness` folder, type the following into CMD/termin
 | #sfk5879       | Skyler Koba | Created & Wrote README.md, created testharness folder and test files |
 
 
+# The Book Club: M03-A04 Implemented Design Patterns
 
-***M02-A04***  
-
-# The Book Club: Implemented Design Patterns
-
-***Alyssa Foran, Hannah Kresefski, Karis Jones, Skyler Koba***  
 
 # Team Contribution
-| Team_Member_ID | Member_Name | Design Pattern Implemented | Classes/Interfaces Implementing Pattern |
-| -------------- | ----------- | ------------ |
-| #saj5610       | Karis Jones | Tagging and Composite | Profile.ts, ProfileTag.js, Communities.ts, CommunityCardContainer.js, CommunityCard.js |
-| #hnk5111       | Hannah Kresefski |  |  |
-| #amf7248       | Alyssa Foran |  |  |
+| Team_Member_ID | Member_Name | Design_Pattern_Implemented | Classes_/_Interfaces_implementing_the_Design_Pattern |
+| -------------- | ----------- | ------------ |  ------------ |
+| #saj5610       | Karis Jones |  |  |
+| #hnk5111       | Hannah Kresefski | Observer (OOP), Tabbed Navigation (UI) | LibraryManager (BookCard.jsx), LibraryObserver (Services.ts), LibraryApp (App.tsx), NavBar.js (all pages) |
+| #amf7248       | Alyssa Foran | Breadcrumb UI, Card UI | Breadcrumb.js, Bookcard.js, CommunityCard.js, CommunityContainer.js
 | #sfk5879       | Skyler Koba |  |  |
