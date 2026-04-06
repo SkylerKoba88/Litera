@@ -131,12 +131,9 @@ class BookCard extends LitElement {
                 <img src="${PointArrow}" alt="Info">
             </div>
             
-            <!-- <button onClick={() => libraryManager.favoriteBook(book.id)}>
-                {book.favorite ? "Unfavorite" : "Favorite"}
-            </button> -->
-
-            <!-- Someone who knows React will have to debug this, I don't know
-             how to refactor this without refactoring all the methods -->
+            <button onClick=${() => libraryManager.favoriteBook(book.id)}>
+                ${book.favorite ? "Unfavorite" : "Favorite"}
+            </button>
         `;
     }
 

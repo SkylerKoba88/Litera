@@ -95,7 +95,7 @@ class CommunityCard extends LitElement {
         return html`
         <div class="container">
             <div class="top">
-                <button class="info-button">
+                <button class="info-button" @click=${() => window.location.hash = '/community-detail'}>
                     <img src="${PointArrow}" alt="Info">
                 </button>
             </div>
