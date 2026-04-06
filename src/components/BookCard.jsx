@@ -126,8 +126,8 @@ class BookCard extends LitElement {
                 <img src="${PointArrow}" alt="Info">
             </div>
             
-            <button onClick={() => libraryManager.favoriteBook(book.id)}>
-                {book.favorite ? "Unfavorite" : "Favorite"}
+            <button onClick=${() => libraryManager.favoriteBook(book.id)}>
+                ${book.favorite ? "Unfavorite" : "Favorite"}
             </button>
         `;
     }

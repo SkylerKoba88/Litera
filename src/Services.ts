@@ -127,3 +127,34 @@ export class LibraryManager {
     this.notify();
   }
 }
+
+
+//test create community function :: FIX
+import { Community } from './Community';
+
+class CommunityService {
+  private communities: Community[] = [];
+
+  createCommunity(input: Omit<Community, 'id' | 'createdAt'>): Community {
+    const community: Community = {
+      ...input,
+      id: Date.now(),
+      createdAt: new Date().toISOString()
+    };
+
+    this.communities.push(community);
+    console.log('[Mock Community Created]', community);
+
+    return community;
+  }
+
+  getCommunities(): Community[] {
+    return [...this.communities];
+  }
+
+  clear() {
+    this.communities = [];
+  }
+}
+
+export const communityService = new CommunityService();
