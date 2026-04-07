@@ -1,7 +1,7 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import './successAnimation.js';
-import { createUser, loginUser } from '../Services.js';
+import { setCurrentUser, createUser, loginUser } from '../Services.js';
 
 interface PasswordChecks {
   length: boolean;
@@ -157,10 +157,12 @@ export class AuthOverlay extends LitElement {
         password: this.password,
       });
 
-      console.log('Logged in:', result);
+      setCurrentUser(result.user);
 
       this.open = false;
       this.resetForm();
+
+      window.location.hash = '/profile';
     } catch (err) {
       console.error('Login failed:', err);
     }

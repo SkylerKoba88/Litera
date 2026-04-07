@@ -2,6 +2,7 @@
 import { html, css, LitElement } from "lit";
 import ProfileIcon from '../images/Profile.svg';
 import BookCaseIcon from '../images/BookCase.svg';
+import { getCurrentUser, isLoggedIn, logout } from '../Services';
 
 const NAV_LINKS = [
     {name: 'home', path: '/'},
@@ -14,6 +15,9 @@ const SUB_TABS = {
     communities: [
         {name: 'create new community', path: '/create-community'}
         //add "my communities"
+    ],
+    profile: [
+        {name: 'logout', action: 'logout'}
     ]
 }
 
@@ -38,8 +42,43 @@ class NavBar extends LitElement {
         this.onNavigate = (path) => {
             window.location.hash = path;
         };
-        this.user = null;
+        this.user = getCurrentUser();
         this.hoveredTab = null;
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+
+        this._onAuthChanged = (e) => {
+            this.user = e.detail.user;
+            this.requestUpdate();
+        }
+        window.addEventListener('auth-changed', this._onAuthChanged);
+    }
+
+    disconnectedCallback() {
+        window.removeEventListener('auth-changed', this._onAuthChanged);
+        super.disconnectedCallback();
+    }
+
+    handleSubAction(action) {
+        if (action === 'logout') {
+            logout();
+            this.user = null;
+            window.location.hash = '/';
+        }
+    }
+
+    _goProfile() {
+        if (!isLoggedIn()) {
+            this.dispatchEvent(new CustomEvent('open-auth', {
+                bubbles: true,
+                composed: true,
+                detail: { mode: 'login' }
+            }));
+        } else {
+            this._go('/profile');
+        }
     }
 
     _base(path) {
@@ -163,7 +202,9 @@ class NavBar extends LitElement {
             <div class="subtabs">
             ${subtabs.map(
                 sub => html`
-                <button @click=${() => this._go(sub.path)}>
+                <button @click=${() => sub.path ? this._go(sub.path)
+                    : this.handleSubAction(sub.action)
+                }>
                     ${sub.name}
                 </button>
                 `
@@ -171,6 +212,15 @@ class NavBar extends LitElement {
             </div>
         `;
 
+    }
+
+    handleSubAction(action) {
+        if (action === 'logout') {
+            logout();
+
+            this.user = null;
+            window.location.hash = '/';
+        }
     }
 
     render() {
@@ -182,8 +232,9 @@ class NavBar extends LitElement {
                     <h2>Litera</h2>
                 </div>
                 <div id="right">
-                    ${NAV_LINKS.map(
-                        (link) =>
+                    ${NAV_LINKS
+                    .map(
+                        link =>
                         html`
                         <div class="nav-item"
                             @mouseenter=${() => (this.hoveredTab = link.name)}
@@ -191,13 +242,20 @@ class NavBar extends LitElement {
                         >
                             <button
                                 class=${this._isActive(link.path) ? 'active' : ''}
-                                @click=${() => this._go(link.path)}
+                                @click=${() => {
+                                    if (link.name === 'profile') {
+                                        this._goProfile();
+                                    } else {
+                                        this._go(link.path);
+                                    }
+                                }}
                                 aria-current=${this._isActive(link.path) ? 'page' : 'false'}
                             >
-                                ${link.name}
+                                ${link.name === 'profile' && !this.user ? 'login' : link.name}
                             </button>
 
-                            ${this.hoveredTab === link.name
+                            ${this.hoveredTab === link.name && 
+                            (link.name !== 'profile' || this.user)
                                     ? this.showSubTabs(link.name)
                                     : null}
 
@@ -205,7 +263,7 @@ class NavBar extends LitElement {
                             
                         `
                     )}
-                    <img src="${this.user?.avatarUrl || ProfileIcon}" alt="User Avatar" style="width: 40px; height: 40px; border-radius: 50%;">
+                    ${this.user ? html `<img src="${this.user.avatarUrl ?? ProfileIcon}" alt="User Avatar" style="width: 40px; height: 40px; border-radius: 50%;">`: null}
                 </div>
             </nav>
         `

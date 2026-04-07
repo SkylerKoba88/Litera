@@ -11,6 +11,8 @@ import CommunityCreationPage from "./pages/CommunityCreation.js";
 import CommunityDetailPage from "./pages/CommunityDetail.js";
 import './components/NavBar.js';
 import './components/AuthOverlay.js';
+import { isLoggedIn } from './Services.js';
+import { restoreAuth } from './Services.js'; 
 
 
 @customElement('app-root')
@@ -19,6 +21,7 @@ export class App extends LitElement {
 
     connectedCallback(): void {
         super.connectedCallback();
+        restoreAuth();
         window.addEventListener('hashchange', this.handleHashChange);
 
     }
@@ -57,9 +60,19 @@ export class App extends LitElement {
         
     };
 
-    private renderPage(): TemplateResult {
+    private renderPage() {
         //routing switch statement by removing hash
         const basePath = this.currentPath.split('#')[0] || '/';
+        if (
+            (basePath.startsWith('/profile')) && !isLoggedIn()
+        ) {
+            const overlay = this.renderRoot.querySelector('auth-overlay') as any;
+            if (overlay) {
+                overlay.mode = 'login';
+                overlay.open = true;
+            }
+            return HomePage({ currentPath: this.currentPath });
+        }
         switch (true) {
             case basePath === '/':
                 return HomePage({currentPath: this.currentPath});

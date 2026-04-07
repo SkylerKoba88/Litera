@@ -175,6 +175,44 @@ app.post('/api/users', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+//login user
+app.post('/api/auth/login', async (req, res) => {
+    const { identifier, password } = req.body || {};
+    if (!identifier || !password) {
+        return res.status(400).json({ error: 'Missing credentials' });
+    }
+    try {
+        // find by username OR email
+        const [rows] = await pool.query(`
+      SELECT id, username, email, password
+      FROM users
+      WHERE username = ? OR email = ?
+      LIMIT 1
+      `, [identifier, identifier]);
+        if (!Array.isArray(rows) || rows.length === 0) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+        const user = rows[0];
+        // compare password
+        const valid = await bcrypt_1.default.compare(password, user.password);
+        if (!valid) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+        // return safe user payload
+        res.json({
+            success: true,
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+            },
+        });
+    }
+    catch (err) {
+        console.error('login error', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 // serve Vite build (connect to client)
 const distDir = path_1.default.join(process.cwd(), 'dist'); // Vite default outDir is "dist"
 app.use(express_1.default.static(distDir));

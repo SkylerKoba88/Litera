@@ -9,7 +9,7 @@ import '../components/BookCard.jsx';
 import '../components/Breadcrumb.js';
 import '../components/ProfileTag.js';
 import EditIcon from '../images/Edit.svg';
-
+import { getCurrentUser } from "../Services";
 
 interface ProfileProps {
     currentPath?: string;
@@ -18,7 +18,13 @@ interface ProfileProps {
 //functions
 
 export const ProfilePage = ({ currentPath = '/profile' }: ProfileProps): TemplateResult => {
-    const userPromise = fetchUserById(1); // hardcoded user id for testing, replace with actual logged in user id
+
+    const user = getCurrentUser();
+    if (!user) {
+        return html``; // App.tsx guard handles auth
+    }
+
+    const userPromise = fetchUserById(user.id); // hardcoded user id for testing, replace with actual logged in user id
 
     const bannerTemplate = until(
         userPromise.then(user => {

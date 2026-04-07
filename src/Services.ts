@@ -19,6 +19,54 @@ export type LoginPayload = {
   password: string;
 };
 
+export type AuthUser = {
+  id: number;
+  username: string;
+  email: string;
+};
+
+const STORAGE_KEY = 'litera_user';
+
+let currentUser: AuthUser | null = null;
+
+export function setCurrentUser(user: AuthUser | null) {
+  currentUser = user;
+
+  if (user) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+  } else {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+
+  window.dispatchEvent(new CustomEvent('auth-changed', {
+    detail: {user}
+  }))
+}
+
+export function getCurrentUser(): AuthUser | null {
+  return currentUser;
+}
+
+export function isLoggedIn(): boolean {
+  return !!currentUser;
+}
+
+export function restoreAuth() {
+  if (currentUser) return;
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return;
+
+  try {
+    currentUser = JSON.parse(raw);
+  } catch {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+}
+
+export function logout() {
+  setCurrentUser(null);
+}
+
 export async function fetchUserById(id:number) {
   const res = await fetch(`${API_BASE}/api/users/${id}`);
   const raw = await res.text();
