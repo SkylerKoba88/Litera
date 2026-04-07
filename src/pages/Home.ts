@@ -2,12 +2,17 @@
 import { html, css, type TemplateResult } from "lit";
 import '../components/Hero.js';
 import '../components/successAnimation.js';
+import { getCurrentUser } from "../Services.js";
 
 interface HomeProps {
     currentPath?: string;
 }
 
 export const HomePage = ({ currentPath = '/' }: HomeProps): TemplateResult => {
+
+    const user = getCurrentUser();
+    const isAuthenticated = !!user;
+
     const style = css`
         :host {
             display: block;
@@ -43,7 +48,7 @@ export const HomePage = ({ currentPath = '/' }: HomeProps): TemplateResult => {
     <success-animation id="successAnim"></success-animation>
 
         <div class="banner">
-            <title-hero></title-hero>
+            <title-hero .isAuthenticated=${isAuthenticated} .user=${user?.username ?? ""}></title-hero>
         </div>
 
         <div class="content">
