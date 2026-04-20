@@ -81,7 +81,7 @@ export class App extends LitElement {
             case basePath.startsWith('/community-detail'): //this will have to have its own special replacement hash thing
                 return CommunityDetailPage({currentPath: this.currentPath});
             case basePath.startsWith('/communities'):
-                return CommunitiesPage({currentPath: this.currentPath});
+                return html`<communities-page></communities-page>`;
             case basePath.startsWith('/libraries'):
                 return LibrariesPage({currentPath: this.currentPath});
             case basePath.startsWith('/login'):

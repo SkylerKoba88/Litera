@@ -1,7 +1,8 @@
 import { html, css, LitElement } from "lit";
 import SearchIcon from "../images/Search.svg";
 
-// need to add actual search functionality and filter logic, but this is the basic structure for the search bar with dropdown and tags
+// need to add actual search functionality and filter logic, 
+// but this is the basic structure for the search bar with dropdown and tags
 
 class SearchBar extends LitElement {
     static tag = "search-bar";

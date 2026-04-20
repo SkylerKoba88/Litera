@@ -5,6 +5,8 @@ function handleResponse(raw: string, res: Response) {
   return JSON.parse(raw);
 }
 
+// ---------- DATA MODELS & SERVICES ----------
+
 export type CreateUserPayload = {
   username: string;
   firstname: string;
@@ -25,10 +27,33 @@ export type AuthUser = {
   email: string;
 };
 
-const STORAGE_KEY = 'litera_user';
+export type CommunityVisibility = 'public' | 'private';
 
+export type CommunityRules = {
+  allowProfanity: boolean;
+  ageRestricted: boolean;
+  spamProtection: boolean;
+  allowImages: boolean;
+  autoBan: boolean;
+};
+
+export type Community = {
+  id: number;
+  owner: string;
+  name: string;
+  description: string;
+  categories: string[];
+  visibility: CommunityVisibility;
+  rules: CommunityRules;
+  colorScheme?: string;
+  thumbnailUrl?: string;
+  createdAt: string;
+};
+
+const STORAGE_KEY = 'litera_user';
 let currentUser: AuthUser | null = null;
 
+// Authentication and User Services
 export function setCurrentUser(user: AuthUser | null) {
   currentUser = user;
 
@@ -176,33 +201,29 @@ export class LibraryManager {
   }
 }
 
+// Community based functions
 
-//test create community function :: FIX
-import { Community } from './Community';
-
-class CommunityService {
-  private communities: Community[] = [];
-
-  createCommunity(input: Omit<Community, 'id' | 'createdAt'>): Community {
-    const community: Community = {
-      ...input,
-      id: Date.now(),
-      createdAt: new Date().toISOString()
-    };
-
-    this.communities.push(community);
-    console.log('[Mock Community Created]', community);
-
-    return community;
-  }
-
-  getCommunities(): Community[] {
-    return [...this.communities];
-  }
-
-  clear() {
-    this.communities = [];
-  }
+export async function fetchCommunities(): Promise<Community[]> {
+  const res = await fetch(`${API_BASE}/api/communities`);
+  const raw = await res.text();
+  return handleResponse(raw, res);
 }
 
-export const communityService = new CommunityService();
+export async function createCommunity(community: Omit<Community, 'id' | 'createdAt' | 'owner'> & { ownerId: number }): Promise<Community> {
+  const res = await fetch(`${API_BASE}/api/communities`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: community.name,
+      description: community.description,
+      categories: JSON.stringify(community.categories),
+      visibility: community.visibility,
+      rules: JSON.stringify(community.rules),
+      color_scheme: community.colorScheme || 'default',
+      thumbnail_url: community.thumbnailUrl || null,
+      owner_id: community.ownerId,
+    }),
+  });
+  const raw = await res.text();
+  return handleResponse(raw, res);
+}

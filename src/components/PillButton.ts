@@ -1,3 +1,4 @@
+// This file defines the PillButton component, which is a reusable UI element for selecting categories in the community creation process.
 import { LitElement, css, html } from "lit";
 
 export class PillButton extends LitElement {

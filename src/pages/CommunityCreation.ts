@@ -1,6 +1,6 @@
 import { html, css, type TemplateResult } from 'lit';
 import '../components/PillButton.js';
-import { communityService } from '../Services.js';
+import { createCommunity, getCurrentUser } from '../Services.js';
 import '../components/successAnimation.jsx';
 import type { PillButton } from '../components/PillButton.ts';
 
@@ -139,22 +139,38 @@ export const CommunityCreationPage = ({
           .map(p => p.category);
 
     
-        await communityService.createCommunity({
-            owner: "mockUser", // TODO: real auth user
-            name: "New Community",
-            description: "Created from form",
-            categories,
-            visibility: "public",
-            rules: {
-              allowProfanity: false,
-              ageRestricted: false,
-              spamProtection: true,
-              allowImages: false,
-              autoBan: false
-            },
+        const user = getCurrentUser();
+        if (!user) {
+          alert('You must be logged in to create a community');
+          return;
+        }
 
-            thumbnailUrl: "",
-            colorScheme: "default"
+        const nameInput = document.querySelector('input[placeholder="Community Name"]') as HTMLInputElement;
+        const descriptionInput = document.querySelector('input[placeholder="Describe your community"]') as HTMLInputElement;
+        const visibilitySelect = document.querySelector('select') as HTMLSelectElement;
+        const thumbnailInput = document.querySelector('input[placeholder="Paste image URL"]') as HTMLInputElement;
+
+        const rules: any = {};
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]') as NodeListOf<HTMLInputElement>;
+        const keys = ['allowProfanity', 'ageRestricted', 'spamProtection', 'allowImages', 'autoBan'];
+        checkboxes.forEach((cb, i) => {
+          rules[keys[i]] = cb.checked;
+        });
+
+        const name = nameInput?.value || 'New Community';
+        const description = descriptionInput?.value || 'Created from form';
+        const visibility = visibilitySelect?.value || 'public';
+        const thumbnailUrl = thumbnailInput?.value || '';
+
+        await createCommunity({
+            name,
+            description,
+            categories,
+            visibility: visibility as 'public' | 'private',
+            rules,
+            colorScheme: 'default',
+            thumbnailUrl,
+            ownerId: user.id
           });
 
           const successAnim = document.createElement("success-animation")
@@ -249,7 +265,7 @@ export const CommunityCreationPage = ({
             <div class="rules">
               <label><input type="checkbox" /> Allow Profanity</label>
               <label><input type="checkbox" /> 18+ Age Restriction</label>
-              <label><input type="checkbox" checked /> Spam Protection</label>
+              <label><input type="checkbox" .checked=${true} /> Spam Protection</label>
               <label><input type="checkbox" /> Allow Image Sending</label>
               <label><input type="checkbox" /> Auto-Ban</label>
             </div>

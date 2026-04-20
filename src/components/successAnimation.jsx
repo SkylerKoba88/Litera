@@ -1,3 +1,4 @@
+// customized successAnimation for successful creation attempts
 import { html, css, LitElement } from "lit";
 
 class SuccessAnimation extends LitElement {

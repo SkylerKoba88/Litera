@@ -213,6 +213,76 @@ app.post('/api/auth/login', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+// ----------- COMMUNITY ROUTES --------------
+async function createCommunity(name, description, ownerId, categories, visibility, rules, colorScheme, thumbnailUrl) {
+    if (typeof name !== 'string' || name.trim().length === 0) {
+        throw new Error('Community name is required');
+    }
+    if (typeof description !== 'string') {
+        throw new Error('Community description is required');
+    }
+    if (typeof ownerId !== 'number' || ownerId < 1) {
+        throw new Error('Valid ownerId is required');
+    }
+    const [result] = await pool.query(`
+    INSERT INTO communities (name, description, owner_id, categories, visibility, rules, color_scheme, thumbnail_url)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `, [name, description, ownerId, categories, visibility, rules, colorScheme, thumbnailUrl]);
+    const newCommunityId = result.insertId;
+    return {
+        id: newCommunityId,
+        name,
+        description,
+        owner_id: ownerId,
+        categories,
+        visibility,
+        rules,
+        color_scheme: colorScheme,
+        thumbnail_url: thumbnailUrl,
+        created_at: new Date()
+    };
+}
+app.get('/api/communities', async (req, res) => {
+    try {
+        const [rows] = await pool.query(`
+      SELECT c.*, u.username as owner
+      FROM communities c
+      JOIN users u ON c.owner_id = u.id
+      ORDER BY c.created_at DESC
+      `);
+        const communities = Array.isArray(rows) ? rows.map((row) => ({
+            id: row.id,
+            owner: row.owner,
+            name: row.name,
+            description: row.description,
+            categories: JSON.parse(row.categories || '[]'),
+            visibility: row.visibility,
+            rules: JSON.parse(row.rules || '{}'),
+            colorScheme: row.color_scheme,
+            thumbnailUrl: row.thumbnail_url,
+            createdAt: row.created_at
+        })) : [];
+        res.json(communities);
+    }
+    catch (e) {
+        console.error('fetch communities error', e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+app.post('/api/communities', async (req, res) => {
+    const { name, description, categories, visibility, rules, color_scheme, thumbnail_url, owner_id } = req.body || {};
+    if (!name || !description || !owner_id) {
+        return res.status(400).json({ error: 'name, description, owner_id required' });
+    }
+    try {
+        const community = await createCommunity(name, description, owner_id, JSON.stringify(categories || []), visibility || 'public', JSON.stringify(rules || {}), color_scheme || 'default', thumbnail_url || null);
+        res.status(201).json(community);
+    }
+    catch (e) {
+        console.error('create community error', e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 // serve Vite build (connect to client)
 const distDir = path_1.default.join(process.cwd(), 'dist'); // Vite default outDir is "dist"
 app.use(express_1.default.static(distDir));

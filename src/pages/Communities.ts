@@ -1,74 +1,99 @@
-//this is where we would write the frontend for communities
-// ---- would also need to use sql-related variables to load in communities (likely through a map)
-import { html, css, type TemplateResult } from "lit";
+import { html, css, type TemplateResult, LitElement } from "lit";
+import { customElement, state } from "lit/decorators.js";
 import '../components/SearchBar.jsx';
 import '../components/CommunityCard.jsx';
 import '../components/CommunityContainer.jsx';
 import '../components/Breadcrumb.jsx';
-import { getCurrentUser } from "../Services.js";
+import { getCurrentUser, fetchCommunities, type Community } from "../Services.js";
 
-interface ComProps {
-    currentPath?: string;
-}
+@customElement('communities-page')
+export class CommunitiesPage extends LitElement {
+    @state() private communities: Community[] = [];
+    @state() private loading = true;
 
-export const CommunitiesPage = ({ currentPath = '/communities' }: ComProps): TemplateResult => {
-    const user = getCurrentUser();
-    const isAuthenticated = !!user;
+    connectedCallback(): void {
+        super.connectedCallback();
+        this.loadCommunities();
+    }
 
-    const styles = css`
-        :host {
-            display: block;
+    private async loadCommunities() {
+        try {
+            this.communities = await fetchCommunities();
+        } catch (e) {
+            console.error('Failed to load communities', e);
+        } finally {
+            this.loading = false;
         }
-        div.banner {
-            background-color: var(--color-5);
-            margin: 24px;
-            text-align: center;
-            color: white;
-            width: fit-content;
-            justify-self: center;
+    }
+
+    private renderCommunityCard(community: Community): TemplateResult {
+        return html`<community-card name="${community.name}" description="${community.description}"></community-card>`;
+    }
+
+    render(): TemplateResult {
+        const user = getCurrentUser();
+        const isAuthenticated = !!user;
+
+        const popularCommunities = this.communities.slice(0, 3); // first 3 as popular
+        const myCommunities = isAuthenticated ? this.communities.filter(c => c.owner === user.username) : [];
+
+        const styles = css`
+            :host {
+                display: block;
+            }
+            div.banner {
+                background-color: var(--color-5);
+                margin: 24px;
+                text-align: center;
+                color: white;
+                width: fit-content;
+                justify-self: center;
+            }
+
+            div.content {
+                justify-self: center;
+            }
+            div.my-communities, div.popular-communities {
+                margin: 24px;
+                gap: 24px;
+            }
+        `;
+
+        if (this.loading) {
+            return html`<div>Loading communities...</div>`;
         }
 
-        div.content {
-            justify-self: center;
-        }
-        div.my-communities, div.popular-communities {
-            margin: 24px;
-            gap: 24px;
-        }
-    `
-    return html`
-        <bread-crumb></bread-crumb>
-        <style>${styles}</style>
-        <div class="banner">
-            <h1 style="padding: 24px 64px;">Communities</h1>
-        </div>
-
-        <div class="content">
-            
-            <search-bar></search-bar>
-
-            <div class="popular-communities">
-                <h3>Popular This Week</h3>
-                <community-container>
-                    <community-card name="Community 1" description="This is the first community."></community-card>
-                    <community-card name="Community 2" description="This is the second community."></community-card>
-                    <community-card name="Community 3" description="This is the third community."></community-card>
-                </community-container>
+        return html`
+            <style>${styles}</style>
+            <bread-crumb></bread-crumb>
+            <div class="banner">
+                <h1 style="padding: 24px 64px;">Communities</h1>
             </div>
 
-            ${isAuthenticated ? html`
-                <div class="my-communities">
-                    <h3>My Communities</h3>
-                    <button @click=${() => window.location.hash = '#/create-community'}>New Community</button>
+            <div class="content">
+                
+                <search-bar></search-bar>
+
+                <div class="popular-communities">
+                    <h3>Popular This Week</h3>
                     <community-container>
-                        <community-card name="My Community 1" description="This is my first community."></community-card>
-                        <community-card name="My Community 2" description="This is my second community."></community-card>
+                        ${popularCommunities.map(c => this.renderCommunityCard(c))}
                     </community-container>
                 </div>
-            ` : null
-            }
-        </div>
-    `;
+
+                ${isAuthenticated ? html`
+                    <div class="my-communities">
+                        <h3>My Communities</h3>
+                        <button @click=${() => window.location.hash = '#/create-community'}>New Community</button>
+                        <community-container>
+                            ${myCommunities.map(c => this.renderCommunityCard(c))}
+                        </community-container>
+                    </div>
+                ` : null
+                }
+            </div>
+        `;
+    }
 };
 
 export default CommunitiesPage;
