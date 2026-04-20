@@ -1,21 +1,13 @@
 import { html, css, type TemplateResult } from 'lit';
 import '../components/PillButton.js';
-import { createCommunity, getCurrentUser } from '../Services.js';
+import { createCommunity, getCurrentUser, type Categories } from '../Services.js';
 import '../components/successAnimation.jsx';
 import type { PillButton } from '../components/PillButton.ts';
+import { VALID_CATEGORIES, formatCategoryName } from '../constants.js';
 
 interface ComProps {
   currentPath?: string;
 }
-
-const CATEGORIES = [
-  'Fantasy',
-  'Sci-Fi',
-  'Romance',
-  'Non-Fiction',
-  'Fiction',
-  'Horror'
-]
 
 export const CommunityCreationPage = ({
   currentPath = '/communities/create-community'
@@ -136,7 +128,7 @@ export const CommunityCreationPage = ({
           
         const categories = pills
           .filter(p => p.selected)
-          .map(p => p.category);
+          .map(p => p.category as any) as Categories;
 
     
         const user = getCurrentUser();
@@ -165,9 +157,9 @@ export const CommunityCreationPage = ({
         await createCommunity({
             name,
             description,
-            //categories,
+            categories,
             visibility: visibility as 'public' | 'private',
-            //rules,
+            rules,
             //colorScheme: 'default',
             thumbnailUrl,
             ownerId: user.id
@@ -235,9 +227,9 @@ export const CommunityCreationPage = ({
 
         
         <div class="inputs">
-            ${CATEGORIES.map(
+            ${VALID_CATEGORIES.map(
                 category => html`
-                    <pill-button class="pill" .category=${category}> ${category}</pill-button>
+                    <pill-button class="pill" .category=${category}> ${formatCategoryName(category)}</pill-button>
                 `
             )}
         </div>

@@ -1,3 +1,5 @@
+import { type CategoryType } from './constants';
+
 const API_BASE = import.meta.env.VITE_API_BASE ?? '';
 
 function handleResponse(raw: string, res: Response) {
@@ -29,22 +31,24 @@ export type AuthUser = {
 
 export type CommunityVisibility = 'public' | 'private';
 
-export type CommunityRules = {
+export type Rules = {
   allowProfanity: boolean;
   ageRestricted: boolean;
   spamProtection: boolean;
   allowImages: boolean;
   autoBan: boolean;
-};
+}
+
+export type Categories = CategoryType[];
 
 export type Community = {
   id: number;
   ownerId: number;
   name: string;
   description: string;
-  //categories: string[];
+  categories: Categories;
   visibility: CommunityVisibility;
-  //rules: CommunityRules;
+  rules: Rules;
   //colorScheme?: string;
   thumbnailUrl?: string;
   createdAt: string;
@@ -209,6 +213,12 @@ export async function fetchCommunities(): Promise<Community[]> {
   return handleResponse(raw, res);
 }
 
+export async function getCommunityById(id: number): Promise<Community> {
+  const res = await fetch(`${API_BASE}/api/communities/${id}`);
+  const raw = await res.text();
+  return handleResponse(raw, res);
+}
+
 export async function createCommunity(community: Omit<Community, 'id' | 'createdAt' | 'owner'>): Promise<Community> {
   const user = getCurrentUser();
   
@@ -222,9 +232,9 @@ export async function createCommunity(community: Omit<Community, 'id' | 'created
     body: JSON.stringify({
       name: community.name,
       description: community.description,
-      //categories: JSON.stringify(community.categories),
+      categories: JSON.stringify(community.categories),
       visibility: community.visibility,
-      //rules: JSON.stringify(community.rules),
+      rules: JSON.stringify(community.rules),
       //color_scheme: community.colorScheme || 'default',
       thumbnail_url: community.thumbnailUrl || null,
       owner_id: user.id,

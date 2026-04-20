@@ -12,6 +12,24 @@ const app = express();
 app.use(cors({ origin: process.env.ALLOWED_ORIGIN ?? '*', credentials: true}));
 app.use(express.json({ limit: '10mb' }));
 
+// Valid community categories - must match client schema
+const VALID_CATEGORIES = [
+  'fantasy',
+  'horror',
+  'art',
+  'science',
+  'music',
+  'sports',
+  'movies',
+  'literature',
+  'travel',
+  'food',
+  'romance',
+  'sci-fi',
+  'fiction',
+  'non-fiction'
+];
+
 // database pool
 // note: you must start the SQL connection first before running the server
 // note: you must restart the server before running the front end
@@ -316,6 +334,15 @@ app.post('/api/communities', async (req, res) => {
   if (!name || !description || !owner_id) {
     return res.status(400).json({ error: 'name, description, owner_id required' });
   }
+  
+  // Validate categories
+  if (categories && Array.isArray(categories)) {
+    const invalidCategories = categories.filter((cat: any) => !VALID_CATEGORIES.includes(cat));
+    if (invalidCategories.length > 0) {
+      return res.status(400).json({ error: `Invalid categories: ${invalidCategories.join(', ')}` });
+    }
+  }
+  
   try {
     const community = await createCommunity(name, description, owner_id, JSON.stringify(categories || []), visibility || 'public', JSON.stringify(rules || {}), color_scheme || 'default', thumbnail_url || null);
     res.status(201).json(community);
