@@ -167,8 +167,8 @@ export const CommunityCreationPage = ({
             description,
             categories,
             visibility: visibility as 'public' | 'private',
-            rules,
-            colorScheme: 'default',
+            //rules,
+            //colorScheme: 'default',
             thumbnailUrl,
             ownerId: user.id
           });
@@ -209,8 +209,8 @@ export const CommunityCreationPage = ({
 
         <div class="inputs">
           <div class="label">
-            <h5>Owner*</h5>
-            <input placeholder="Username" style="width: 16vw" />
+            <h5>Owner</h5>
+            <input disabled placeholder="${getCurrentUser()?.username || 'Username'}" style="width: 16vw" />
           </div>
 
           <div class="label">

@@ -280,7 +280,7 @@ app.post('/api/communities', async (req, res) => {
     }
     catch (e) {
         console.error('create community error', e);
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ error: e instanceof Error ? e.message : 'Server error' });
     }
 });
 // serve Vite build (connect to client)
