@@ -39,13 +39,13 @@ export type CommunityRules = {
 
 export type Community = {
   id: number;
-  owner: string;
+  ownerId: number;
   name: string;
   description: string;
-  categories: string[];
+  //categories: string[];
   visibility: CommunityVisibility;
-  rules: CommunityRules;
-  colorScheme?: string;
+  //rules: CommunityRules;
+  //colorScheme?: string;
   thumbnailUrl?: string;
   createdAt: string;
 };
@@ -209,19 +209,25 @@ export async function fetchCommunities(): Promise<Community[]> {
   return handleResponse(raw, res);
 }
 
-export async function createCommunity(community: Omit<Community, 'id' | 'createdAt' | 'owner'> & { ownerId: number }): Promise<Community> {
+export async function createCommunity(community: Omit<Community, 'id' | 'createdAt' | 'owner'>): Promise<Community> {
+  const user = getCurrentUser();
+  
+  if (!user) {
+    throw new Error('User must be logged in to create a community');
+  }
+
   const res = await fetch(`${API_BASE}/api/communities`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       name: community.name,
       description: community.description,
-      categories: JSON.stringify(community.categories),
+      //categories: JSON.stringify(community.categories),
       visibility: community.visibility,
-      rules: JSON.stringify(community.rules),
-      color_scheme: community.colorScheme || 'default',
+      //rules: JSON.stringify(community.rules),
+      //color_scheme: community.colorScheme || 'default',
       thumbnail_url: community.thumbnailUrl || null,
-      owner_id: community.ownerId,
+      owner_id: user.id,
     }),
   });
   const raw = await res.text();
