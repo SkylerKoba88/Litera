@@ -39,7 +39,7 @@ export class ProfilePage extends LitElement {
     private renderCommunityCard(community: Community): TemplateResult {
         return html`
           <div style="cursor:pointer" @click=${() => { window.location.hash = `#/community-detail/${community.id}`; }}>
-            <community-card name="${community.name}" description="${community.description}"></community-card>
+            <community-card name="${community.name}" description="${community.description}" thumbnail="${community.thumbnailUrl || ''}"></community-card>
           </div>`;
     }
 
