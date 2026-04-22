@@ -111,16 +111,24 @@ class BookCard extends LitElement {
         `;
     }
         
+    toggleFavorite() {
+        this.favorite = !this.favorite;
+        this.dispatchEvent(new CustomEvent('favorite-toggle', {
+            bubbles: true,
+            composed: true,
+            detail: { title: this.title || this.name, favorite: this.favorite }
+        }));
+    }
+
     render(){
         return html`
             <div class="book">
                 <h3 class="title">${this.title || this.name || "Book Title"}</h3>
                 <img src="${PointArrow}" alt="Info">
-                <button onClick=${() => libraryManager.favoriteBook(book.id)}>
-                ${book.favorite ? "Unfavorite" : "Favorite"}
+                <button @click=${() => this.toggleFavorite()}>
+                    ${this.favorite ? "Unfavorite" : "Favorite"}
                 </button>
             </div>
-        
         `;
     }
 
