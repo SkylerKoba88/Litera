@@ -71,6 +71,10 @@ export const ProfilePage = ({ currentPath = '/profile' }: ProfileProps): Templat
         html`<div>Loading profile...</div>`
     );
 
+    function loadCommunities(){
+        //fetch communities for this user and display in "My Communities" section
+    }
+
     const styles = css`
         :host{
             display: block;
@@ -157,9 +161,6 @@ export const ProfilePage = ({ currentPath = '/profile' }: ProfileProps): Templat
                 <community-card></community-card>
                 <community-card></community-card> 
                 <community-card></community-card>  
-                <!-- Ideally the insertion of community card should be in
-                 community-container, this is just so we have something for the
-                 presentation + testing -->
             </community-container>
             <h4>My Favorites</h4>
             <community-container>
