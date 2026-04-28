@@ -736,6 +736,59 @@ app.get('/api/books/:id', async (req, res) => {
   }
 });
 
+// ----------- FAVORITES ROUTES --------------
+
+app.get('/api/favorites', async (req, res) => {
+  const userId = Number(req.query.user_id);
+  if (!Number.isInteger(userId) || userId < 1) {
+    return res.status(400).json({ error: 'valid user_id is required' });
+  }
+  try {
+    const [rows] = await pool.query(
+      'SELECT book_id FROM user_favorites WHERE user_id = ?',
+      [userId]
+    );
+    res.json({ bookIds: (rows as any[]).map(r => r.book_id) });
+  } catch (e) {
+    console.error('fetch favorites error', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/favorites', async (req, res) => {
+  const userId = Number((req.body || {}).user_id);
+  const bookId = Number((req.body || {}).book_id);
+  if (!Number.isInteger(userId) || userId < 1) return res.status(400).json({ error: 'valid user_id required' });
+  if (!Number.isInteger(bookId) || bookId < 1) return res.status(400).json({ error: 'valid book_id required' });
+  try {
+    await pool.query(
+      'INSERT IGNORE INTO user_favorites (user_id, book_id) VALUES (?, ?)',
+      [userId, bookId]
+    );
+    res.status(201).json({ success: true });
+  } catch (e) {
+    console.error('add favorite error', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.delete('/api/favorites', async (req, res) => {
+  const userId = Number((req.body || {}).user_id);
+  const bookId = Number((req.body || {}).book_id);
+  if (!Number.isInteger(userId) || userId < 1) return res.status(400).json({ error: 'valid user_id required' });
+  if (!Number.isInteger(bookId) || bookId < 1) return res.status(400).json({ error: 'valid book_id required' });
+  try {
+    await pool.query(
+      'DELETE FROM user_favorites WHERE user_id = ? AND book_id = ?',
+      [userId, bookId]
+    );
+    res.json({ success: true });
+  } catch (e) {
+    console.error('remove favorite error', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // serve Vite build (connect to client)
 const distDir = path.join(process.cwd(), 'dist'); // Vite default outDir is "dist"
 app.use(express.static(distDir));

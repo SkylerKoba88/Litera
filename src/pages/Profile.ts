@@ -9,32 +9,67 @@ import '../components/BookCard.jsx';
 import '../components/Breadcrumb.jsx';
 import '../components/ProfileTag.jsx';
 import EditIcon from '../images/Edit.svg';
-import { getCurrentUser, fetchUserById, fetchCommunities, fetchBooks, type Community, type BookRecord } from "../Services";
+import {
+    getCurrentUser, fetchUserById, fetchCommunities, fetchBooks,
+    fetchFavorites, addFavorite, removeFavorite,
+    type Community, type BookRecord
+} from "../Services";
 
-//functions
 @customElement('profile-page')
 export class ProfilePage extends LitElement {
     @state() private communities: Community[] = [];
     @state() private books: BookRecord[] = [];
+    @state() private favoriteIds: Set<number> = new Set();
     @state() private loading = true;
 
     connectedCallback(): void {
         super.connectedCallback();
         this.loadData();
+        this.addEventListener('favorite-toggle', this.handleFavoriteToggle as unknown as EventListener);
+    }
+
+    disconnectedCallback(): void {
+        super.disconnectedCallback();
+        this.removeEventListener('favorite-toggle', this.handleFavoriteToggle as unknown as EventListener);
     }
 
     private async loadData() {
         try {
-            [this.communities, this.books] = await Promise.all([
+            const user = getCurrentUser();
+            const results = await Promise.all([
                 fetchCommunities(),
                 fetchBooks(),
+                user ? fetchFavorites(user.id) : Promise.resolve([] as number[]),
             ]);
+            this.communities = results[0];
+            this.books = results[1];
+            this.favoriteIds = new Set(results[2]);
         } catch (e) {
             console.error('Failed to load profile data', e);
         } finally {
             this.loading = false;
         }
     }
+
+    private handleFavoriteToggle = async (e: Event) => {
+        const { bookId, favorite } = (e as CustomEvent).detail;
+        if (!bookId) return;
+        if (!getCurrentUser()) return;
+
+        try {
+            if (favorite) {
+                await addFavorite(bookId);
+                this.favoriteIds = new Set([...this.favoriteIds, bookId]);
+            } else {
+                await removeFavorite(bookId);
+                const next = new Set(this.favoriteIds);
+                next.delete(bookId);
+                this.favoriteIds = next;
+            }
+        } catch (err) {
+            console.error('Failed to toggle favorite', err);
+        }
+    };
 
     private renderCommunityCard(community: Community): TemplateResult {
         return html`
@@ -43,17 +78,27 @@ export class ProfilePage extends LitElement {
           </div>`;
     }
 
+    private renderBookCard(book: BookRecord): TemplateResult {
+        return html`<book-card
+            title="${book.title}"
+            author="${book.authors}"
+            thumbnail="${book.thumbnail ?? ''}"
+            description="${book.description ?? ''}"
+            .bookId=${book.id}
+            .favorite=${this.favoriteIds.has(book.id)}
+        ></book-card>`;
+    }
+
     render(): TemplateResult {
         const user = getCurrentUser();
-        const isAuthenticated = !!user;
 
         if (!user) {
             return html`<p>Please log in to view your profile.</p>`;
         }
 
         const userPromise = fetchUserById(user.id);
-
-        const myCommunities = isAuthenticated ? this.communities.filter(c => c.ownerId === user.id) : [];
+        const myCommunities = this.communities.filter(c => c.ownerId === user.id);
+        const favoriteBooks = this.books.filter(b => this.favoriteIds.has(b.id));
 
         const styles = css`
             :host{
@@ -126,7 +171,6 @@ export class ProfilePage extends LitElement {
                 const lastName = user.lastname ?? '';
                 const dob = user.dob ? new Date(user.dob).toLocaleDateString() : 'N/A';
                 const email = user.email ?? '';
-                //const phone = user.phone ?? '';
                 return html`
                     <div class="info">
                         <div>
@@ -145,7 +189,6 @@ export class ProfilePage extends LitElement {
                             <p class="form-label">Email</p>
                             <p>${email}</p>
                         </div>
-                        <!-- <p>Phone: </p> -->
                     </div>
                 `;
             }),
@@ -187,20 +230,17 @@ export class ProfilePage extends LitElement {
                     </community-container>
                     <h4>My Favorites</h4>
                     <community-container>
-                        ${this.books.map(book => html`
-                            <book-card
-                                title="${book.title}"
-                                author="${book.authors}"
-                                thumbnail="${book.thumbnail ?? ''}"
-                                description="${book.description ?? ''}"
-                            ></book-card>
-                        `)}
+                        ${this.loading
+                            ? html`<p>Loading...</p>`
+                            : favoriteBooks.length
+                                ? favoriteBooks.map(b => this.renderBookCard(b))
+                                : html`<p style="color:#999; padding:8px 0;">No favorites yet — heart a book in the Libraries page!</p>`}
                     </community-container>
                 </div>
             </div>
         `;
     }
-    
+
 };
 
 export default ProfilePage;

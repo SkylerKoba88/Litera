@@ -8,13 +8,15 @@ class BookCard extends LitElement {
 
     static get properties(){
         return{
-            name: { type:String },
-            title: { type:String },
-            author: { type:String },
-            thumbnail: { type:String }, // must be at LEAST 200 x 200
-            description: { type:String },
-            book: { type:String},
-            favorite: { type: Boolean }
+            name: { type: String },
+            title: { type: String },
+            author: { type: String },
+            thumbnail: { type: String },
+            description: { type: String },
+            book: { type: String },
+            favorite: { type: Boolean },
+            bookId: { type: Number },
+            _bursting: { state: true },
         }
     }
 
@@ -27,6 +29,8 @@ class BookCard extends LitElement {
         this.description="A description of the book.";
         this.book = null;
         this.favorite = false;
+        this.bookId = null;
+        this._bursting = false;
     }
 
     static get styles(){
@@ -102,6 +106,13 @@ class BookCard extends LitElement {
                 display: block;
             }
 
+            /* ── fav button wrapper (anchors burst to the heart) ──── */
+            .fav-wrap {
+                position: relative;
+                display: flex;
+                align-items: center;
+            }
+
             .fav-btn {
                 background: transparent;
                 border: none;
@@ -110,12 +121,67 @@ class BookCard extends LitElement {
                 display: flex;
                 align-items: center;
                 line-height: 0;
+                transition: transform 0.15s;
             }
 
             .fav-btn:hover svg path {
                 stroke: #ece0d5;
                 opacity: 1;
             }
+
+            .fav-btn.pop {
+                animation: heart-pop 0.35s ease-out;
+            }
+
+            @keyframes heart-pop {
+                0%   { transform: scale(1); }
+                40%  { transform: scale(1.55); }
+                70%  { transform: scale(0.9); }
+                100% { transform: scale(1); }
+            }
+
+            /* ── starburst particles ──────────────────────────────── */
+            .burst-container {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 0;
+                height: 0;
+                pointer-events: none;
+                overflow: visible;
+            }
+
+            .burst {
+                position: absolute;
+                width: 6px;
+                height: 6px;
+                top: -3px;
+                left: -3px;
+                border-radius: 50%;
+                animation-duration: 0.65s;
+                animation-timing-function: ease-out;
+                animation-fill-mode: forwards;
+                opacity: 0;
+            }
+
+            /* 8 directions */
+            @keyframes bn  { from{opacity:1;transform:translate(0,0)   scale(1)} to{opacity:0;transform:translate(0,-26px)        scale(0)} }
+            @keyframes bne { from{opacity:1;transform:translate(0,0)   scale(1)} to{opacity:0;transform:translate(18px,-18px)     scale(0)} }
+            @keyframes be  { from{opacity:1;transform:translate(0,0)   scale(1)} to{opacity:0;transform:translate(26px,0)         scale(0)} }
+            @keyframes bse { from{opacity:1;transform:translate(0,0)   scale(1)} to{opacity:0;transform:translate(18px,18px)      scale(0)} }
+            @keyframes bs  { from{opacity:1;transform:translate(0,0)   scale(1)} to{opacity:0;transform:translate(0,26px)         scale(0)} }
+            @keyframes bsw { from{opacity:1;transform:translate(0,0)   scale(1)} to{opacity:0;transform:translate(-18px,18px)     scale(0)} }
+            @keyframes bw  { from{opacity:1;transform:translate(0,0)   scale(1)} to{opacity:0;transform:translate(-26px,0)        scale(0)} }
+            @keyframes bnw { from{opacity:1;transform:translate(0,0)   scale(1)} to{opacity:0;transform:translate(-18px,-18px)    scale(0)} }
+
+            .b1 { background: #ffd700; animation-name: bn;  animation-delay: 0s;     }
+            .b2 { background: #ff6b6b; animation-name: bne; animation-delay: 0.04s;  }
+            .b3 { background: #a29bfe; animation-name: be;  animation-delay: 0s;     }
+            .b4 { background: #fd79a8; animation-name: bse; animation-delay: 0.04s;  }
+            .b5 { background: #55efc4; animation-name: bs;  animation-delay: 0s;     }
+            .b6 { background: #74b9ff; animation-name: bsw; animation-delay: 0.04s;  }
+            .b7 { background: #ffd700; animation-name: bw;  animation-delay: 0s;     }
+            .b8 { background: #ff7675; animation-name: bnw; animation-delay: 0.04s;  }
 
             /* ── card hover expansions ────────────────────────────── */
             .book:hover {
@@ -138,11 +204,18 @@ class BookCard extends LitElement {
     }
 
     toggleFavorite() {
-        this.favorite = !this.favorite;
+        const adding = !this.favorite;
+        this.favorite = adding;
+
+        if (adding) {
+            this._bursting = true;
+            setTimeout(() => { this._bursting = false; }, 750);
+        }
+
         this.dispatchEvent(new CustomEvent('favorite-toggle', {
             bubbles: true,
             composed: true,
-            detail: { title: this.title || this.name, favorite: this.favorite }
+            detail: { title: this.title || this.name, favorite: this.favorite, bookId: this.bookId }
         }));
     }
 
@@ -161,9 +234,23 @@ class BookCard extends LitElement {
             <div class="book">
                 <h3 class="title">${this.title || this.name || "Book Title"}</h3>
                 <div class="controls">
-                    <button class="fav-btn" @click=${() => this.toggleFavorite()}>
-                        ${heartIcon}
-                    </button>
+                    <div class="fav-wrap">
+                        <button class="fav-btn ${this._bursting ? 'pop' : ''}" @click=${() => this.toggleFavorite()}>
+                            ${heartIcon}
+                        </button>
+                        ${this._bursting ? html`
+                            <div class="burst-container" aria-hidden="true">
+                                <span class="burst b1"></span>
+                                <span class="burst b2"></span>
+                                <span class="burst b3"></span>
+                                <span class="burst b4"></span>
+                                <span class="burst b5"></span>
+                                <span class="burst b6"></span>
+                                <span class="burst b7"></span>
+                                <span class="burst b8"></span>
+                            </div>
+                        ` : ''}
+                    </div>
                     <img src="${PointArrow}" alt="Info">
                 </div>
             </div>

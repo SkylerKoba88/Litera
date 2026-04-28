@@ -4,21 +4,33 @@ import '../components/SearchBar.jsx';
 import '../components/CommunityContainer.jsx';
 import '../components/BookCard.jsx';
 import '../components/Breadcrumb.jsx';
-import { getCurrentUser, fetchBooks, type BookRecord } from "../Services.js";
+import { getCurrentUser, fetchBooks, fetchFavorites, addFavorite, removeFavorite, type BookRecord } from "../Services.js";
 
 @customElement('libraries-page')
 export class LibrariesPage extends LitElement {
     @state() private books: BookRecord[] = [];
+    @state() private favoriteIds: Set<number> = new Set();
     @state() private loading = true;
 
     connectedCallback(): void {
         super.connectedCallback();
         this.loadBooks();
+        this.addEventListener('favorite-toggle', this.handleFavoriteToggle as unknown as EventListener);
+    }
+
+    disconnectedCallback(): void {
+        super.disconnectedCallback();
+        this.removeEventListener('favorite-toggle', this.handleFavoriteToggle as unknown as EventListener);
     }
 
     private async loadBooks() {
         try {
             this.books = await fetchBooks();
+            const user = getCurrentUser();
+            if (user) {
+                const ids = await fetchFavorites(user.id);
+                this.favoriteIds = new Set(ids);
+            }
         } catch (e) {
             console.error('Failed to load books', e);
         } finally {
@@ -26,18 +38,41 @@ export class LibrariesPage extends LitElement {
         }
     }
 
+    private handleFavoriteToggle = async (e: Event) => {
+        const { bookId, favorite } = (e as CustomEvent).detail;
+        if (!bookId) return;
+        if (!getCurrentUser()) return;
+
+        try {
+            if (favorite) {
+                await addFavorite(bookId);
+                this.favoriteIds = new Set([...this.favoriteIds, bookId]);
+            } else {
+                await removeFavorite(bookId);
+                const next = new Set(this.favoriteIds);
+                next.delete(bookId);
+                this.favoriteIds = next;
+            }
+        } catch (err) {
+            console.error('Failed to toggle favorite', err);
+        }
+    };
+
     private renderBookCard(book: BookRecord): TemplateResult {
         return html`<book-card
             title="${book.title}"
             author="${book.authors}"
             thumbnail="${book.thumbnail ?? ''}"
             description="${book.description ?? ''}"
+            .bookId=${book.id}
+            .favorite=${this.favoriteIds.has(book.id)}
         ></book-card>`;
     }
 
     render(): TemplateResult {
         const user = getCurrentUser();
         const isAuthenticated = !!user;
+        const favoriteBooks = this.books.filter(b => this.favoriteIds.has(b.id));
 
         const styles = css`
             :host {
@@ -86,7 +121,9 @@ export class LibrariesPage extends LitElement {
                 <div class="favorites">
                     <h3>Favorites</h3>
                     <community-container>
-                        ${this.books.slice(0, 2).map(b => this.renderBookCard(b))}
+                        ${favoriteBooks.length
+                            ? favoriteBooks.map(b => this.renderBookCard(b))
+                            : html`<p style="color:#999; padding:8px 0;">No favorites yet — click the heart on any book!</p>`}
                     </community-container>
                 </div>
                 <div class="user-shelf">

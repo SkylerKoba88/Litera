@@ -42,6 +42,19 @@ a   "categories" text,
    CONSTRAINT "communities_ibfk_1" FOREIGN KEY ("owner_id") REFERENCES "users" ("id")
  )
 
+ CREATE TABLE "user_favorites" (
+   "id" int NOT NULL AUTO_INCREMENT,
+   "user_id" int NOT NULL,
+   "book_id" int unsigned NOT NULL,
+   "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+   PRIMARY KEY ("id"),
+   UNIQUE KEY "user_book_unique" ("user_id","book_id"),
+   KEY "user_idx" ("user_id"),
+   KEY "book_idx" ("book_id"),
+   CONSTRAINT "fav_user_fk" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE,
+   CONSTRAINT "fav_book_fk" FOREIGN KEY ("book_id") REFERENCES "books" ("id") ON DELETE CASCADE
+ )
+
  CREATE TABLE "books" (
    "id" int unsigned NOT NULL AUTO_INCREMENT,
    "isbn13" varchar(13) COLLATE utf8mb4_unicode_ci NOT NULL,

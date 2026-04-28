@@ -359,6 +359,39 @@ export async function deleteCommunity(id: number): Promise<{ success: boolean }>
   return handleResponse(raw, res);
 }
 
+// Favorites
+
+export async function fetchFavorites(userId: number): Promise<number[]> {
+  const res = await fetch(`${API_BASE}/api/favorites?user_id=${userId}`);
+  const raw = await res.text();
+  const data = handleResponse(raw, res);
+  return (data?.bookIds ?? []) as number[];
+}
+
+export async function addFavorite(bookId: number): Promise<void> {
+  const user = getCurrentUser();
+  if (!user) throw new Error('Must be logged in to favorite a book');
+  const res = await fetch(`${API_BASE}/api/favorites`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: user.id, book_id: bookId }),
+  });
+  const raw = await res.text();
+  handleResponse(raw, res);
+}
+
+export async function removeFavorite(bookId: number): Promise<void> {
+  const user = getCurrentUser();
+  if (!user) throw new Error('Must be logged in to unfavorite a book');
+  const res = await fetch(`${API_BASE}/api/favorites`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: user.id, book_id: bookId }),
+  });
+  const raw = await res.text();
+  handleResponse(raw, res);
+}
+
 export async function joinCommunity(communityId: number): Promise<{
   success: boolean;
   alreadyMember?: boolean;
