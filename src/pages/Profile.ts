@@ -268,6 +268,9 @@ export class ProfilePage extends LitElement {
                 gap: 24px;
                 margin-bottom: 16px;
             }
+            .banner {
+                justify-content: space-between;
+            }
             .personal-info {
                 justify-content: space-between;
             }
@@ -433,24 +436,23 @@ export class ProfilePage extends LitElement {
                 <h2>${this.isOwnProfile ? 'My Profile' : `@${u.username}'s Profile`}</h2>
 
                 <div class="banner">
-                    <img id="profileImg" src="${avatarSrc}" />
-                    <div class="profile-names">
-                        <h4>@${u.username ?? 'Unknown'}</h4>
-                        <h5>${fullName || 'No name available'}</h5>
-                        ${u.bio ? html`<p class="bio-text">${u.bio}</p>` : ''}
-                        ${!this.isOwnProfile && cur ? html`
-                            <div class="friend-actions">${this.renderFriendButton()}</div>
-                        ` : ''}
+                    <div style="display:flex; gap:24px; align-items:center;">
+                        <img id="profileImg" src="${avatarSrc}" />
+                        <div class="profile-names">
+                            <h4>@${u.username ?? 'Unknown'}</h4>
+                            <h5>${fullName || 'No name available'}</h5>
+                            ${u.bio ? html`<p class="bio-text">${u.bio}</p>` : ''}
+                            ${!this.isOwnProfile && cur ? html`
+                                <div class="friend-actions">${this.renderFriendButton()}</div>
+                            ` : ''}
+                        </div>
                     </div>
-                </div>
-
-                ${this.isOwnProfile ? html`
                     <div style="padding: 20px 24px; border-bottom: 1px solid #eee; display: flex; gap: 20px;">
                         <button style="background: transparent; border: none; color: var(--color-4); cursor: pointer; font-weight: 600; padding: 0;" @click=${this.openFriendsToast.bind(this)}>
-                            👥 ${this.friendsCount} friend${this.friendsCount !== 1 ? 's' : ''}
+                            ${this.friendsCount} friend${this.friendsCount !== 1 ? 's' : ''}
                         </button>
                     </div>
-                ` : ''}
+                </div>
 
                 ${this.isOwnProfile ? html`
                     <div class="personal-info">
