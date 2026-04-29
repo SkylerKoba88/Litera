@@ -2,7 +2,7 @@
 // ---- also where we would likely require having logged in + fetched specific user data
 import { html, css, type TemplateResult } from "lit";
 import { until } from 'lit/directives/until.js';
-import { fetchUserById, updateUserInformation, checkUniqueUsernameEmail } from '../Services';
+import { fetchUserById, updateUserInformation, checkUniqueUsernameEmail, setCurrentUser } from '../Services';
 import '../components/CommunityCard.jsx';
 import '../components/CommunityContainer.jsx';
 import '../components/AppAlert';
@@ -93,12 +93,18 @@ export const ProfileEditPage = ({ currentPath = '/profile/edit' }: ProfileEditPr
           return;
         }
 
-        const result = await updateUserInformation(user.id, formData.username, formData.firstname, formData.lastname, formData.email, formData.dob);
+        const result = await updateUserInformation(user.id, formData.username, formData.firstname, formData.lastname, formData.email, formData.dob, profileImgUrl || undefined);
         if (!result || (result as any).success !== true) {
           throw new Error('Update failed');
         }
 
-        
+        setCurrentUser({
+          id: user.id,
+          username: formData.username || user.username,
+          email: formData.email || user.email,
+          avatarUrl: profileImgUrl || (result as any).user?.avatarUrl || user.avatarUrl,
+        });
+
         const animEl = showSuccessAnimation();
         animEl.addEventListener(
             'finished',

@@ -1,4 +1,5 @@
 import { html, css, LitElement, type TemplateResult } from 'lit';
+import { ifDefined } from 'lit/directives/if-defined.js';
 import { customElement, state, property } from 'lit/decorators.js';
 import '../components/SearchBar.jsx';
 import '../components/CommunityCard.jsx';
@@ -14,7 +15,9 @@ import {
   getCurrentUser,
   fetchCommunityBooks,
   setCommunityCurrentBook,
+  finishCurrentBook,
   fetchBooks,
+  createBook,
   type Community,
   type MembershipStatus,
   type CommunityBooks,
@@ -36,6 +39,15 @@ export class CommunityDetailPage extends LitElement {
   @state() private bookSearchQuery = '';
   @state() private selectedBookId: number | null = null;
   @state() private settingBook = false;
+  @state() private finishingBook = false;
+  @state() private showAddBookForm = false;
+  @state() private addBookTitle = '';
+  @state() private addBookAuthors = '';
+  @state() private addBookIsbn = '';
+  @state() private addBookThumbnail = '';
+  @state() private addBookYear = '';
+  @state() private addingBook = false;
+  @state() private addBookError = '';
 
   // Edit form values — set in openEdit() before editMode toggles to true
   private editName = '';
@@ -412,8 +424,14 @@ export class CommunityDetailPage extends LitElement {
 
     .delete-warning { color: #c0392b; font-weight: 600; margin-bottom: 8px; }
 
-    .btn-set-book {
+    .admin-book-actions {
+      display: flex;
+      gap: 8px;
       margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn-set-book {
       background: var(--color-4);
       color: white;
       border: none;
@@ -424,6 +442,19 @@ export class CommunityDetailPage extends LitElement {
       cursor: pointer;
     }
     .btn-set-book:hover { opacity: 0.85; }
+
+    .btn-finish-book {
+      background: #8f005f;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-finish-book:hover { opacity: 0.85; }
+    .btn-finish-book:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .book-picker-list {
       max-height: 340px;
@@ -481,6 +512,48 @@ export class CommunityDetailPage extends LitElement {
       max-width: 460px;
       padding: 18px;
       font-size: 0.9rem;
+    }
+
+    .empty-search {
+      padding: 20px 16px;
+      text-align: center;
+      color: #888;
+    }
+
+    .empty-search p { margin: 0 0 12px; font-size: 0.9rem; }
+
+    .btn-add-book {
+      background: var(--color-4);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-add-book:hover { opacity: 0.85; }
+
+    .add-book-form { margin-top: 4px; }
+
+    .add-book-back {
+      background: none;
+      border: none;
+      color: var(--color-4);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .add-book-back:hover { text-decoration: underline; }
+
+    .add-book-error {
+      color: #c0392b;
+      font-size: 0.85rem;
+      margin: 8px 0 0;
     }
 
     @media (max-width: 900px) {
@@ -575,7 +648,53 @@ export class CommunityDetailPage extends LitElement {
     }
     this.bookSearchQuery = '';
     this.selectedBookId = null;
+    this.showAddBookForm = false;
+    this.addBookTitle = '';
+    this.addBookAuthors = '';
+    this.addBookIsbn = '';
+    this.addBookThumbnail = '';
+    this.addBookYear = '';
+    this.addBookError = '';
     this.showBookPicker = true;
+  }
+
+  private async handleAddBook() {
+    if (!this.addBookTitle.trim() || !this.addBookAuthors.trim()) {
+      this.addBookError = 'Title and Author are required.';
+      return;
+    }
+    this.addingBook = true;
+    this.addBookError = '';
+    try {
+      const newBook = await createBook({
+        title: this.addBookTitle.trim(),
+        authors: this.addBookAuthors.trim(),
+        isbn13: this.addBookIsbn.trim() || undefined,
+        thumbnail: this.addBookThumbnail.trim() || undefined,
+        published_year: this.addBookYear ? Number(this.addBookYear) : undefined,
+      });
+      this.allBooks = [...this.allBooks, newBook];
+      this.selectedBookId = newBook.id;
+      this.showAddBookForm = false;
+      this.bookSearchQuery = '';
+    } catch (e) {
+      this.addBookError = e instanceof Error ? e.message : 'Failed to add book.';
+    } finally {
+      this.addingBook = false;
+    }
+  }
+
+  private async handleFinishBook() {
+    if (!this.community) return;
+    this.finishingBook = true;
+    try {
+      await finishCurrentBook(this.community.id);
+      this.communityBooks = await fetchCommunityBooks(this.community.id);
+    } catch (e) {
+      console.error('Failed to finish book', e);
+    } finally {
+      this.finishingBook = false;
+    }
   }
 
   private async handleSetCurrentBook() {
@@ -691,10 +810,36 @@ export class CommunityDetailPage extends LitElement {
         )
       : this.allBooks;
 
-    return html`
-      <div class="overlay">
-        <div class="modal">
-          <h2>Set Current Book</h2>
+    const pickerContent = this.showAddBookForm
+      ? html`
+          <div class="add-book-form">
+            <button class="add-book-back" @click=${() => { this.showAddBookForm = false; this.addBookError = ''; }}>
+              ← Back to search
+            </button>
+            <div class="form-field">
+              <label>Title <span style="color:#c0392b">*</span></label>
+              <input .value=${this.addBookTitle} @input=${(e: Event) => { this.addBookTitle = (e.target as HTMLInputElement).value; }} placeholder="e.g. The Great Gatsby" />
+            </div>
+            <div class="form-field">
+              <label>Author(s) <span style="color:#c0392b">*</span></label>
+              <input .value=${this.addBookAuthors} @input=${(e: Event) => { this.addBookAuthors = (e.target as HTMLInputElement).value; }} placeholder="e.g. F. Scott Fitzgerald" />
+            </div>
+            <div class="form-field">
+              <label>ISBN-13 <span style="color:#999;font-weight:400;">(optional)</span></label>
+              <input .value=${this.addBookIsbn} @input=${(e: Event) => { this.addBookIsbn = (e.target as HTMLInputElement).value; }} placeholder="13-digit ISBN" maxlength="13" />
+            </div>
+            <div class="form-field">
+              <label>Thumbnail URL <span style="color:#999;font-weight:400;">(optional)</span></label>
+              <input .value=${this.addBookThumbnail} @input=${(e: Event) => { this.addBookThumbnail = (e.target as HTMLInputElement).value; }} placeholder="https://..." />
+            </div>
+            <div class="form-field">
+              <label>Published Year <span style="color:#999;font-weight:400;">(optional)</span></label>
+              <input type="number" .value=${this.addBookYear} @input=${(e: Event) => { this.addBookYear = (e.target as HTMLInputElement).value; }} placeholder="e.g. 1925" min="1000" max="2100" />
+            </div>
+            ${this.addBookError ? html`<p class="add-book-error">${this.addBookError}</p>` : null}
+          </div>
+        `
+      : html`
           <input
             class="picker-search"
             type="text"
@@ -717,15 +862,37 @@ export class CommunityDetailPage extends LitElement {
                 </div>
               </div>
             `)}
-            ${filtered.length === 0 ? html`<div style="padding:16px;color:#999;text-align:center;">No books found.</div>` : null}
+            ${filtered.length === 0 ? html`
+              <div class="empty-search">
+                <p>No books found for "${this.bookSearchQuery}".</p>
+                <button class="btn-add-book" @click=${() => { this.showAddBookForm = true; }}>
+                  + Add Book
+                </button>
+              </div>
+            ` : null}
           </div>
+        `;
+
+    return html`
+      <div class="overlay">
+        <div class="modal">
+          <h2>${this.showAddBookForm ? 'Add a New Book' : 'Set Current Book'}</h2>
+          ${pickerContent}
           <div class="modal-actions">
             <button class="btn-cancel" @click=${() => { this.showBookPicker = false; }}>Cancel</button>
-            <button
-              class="btn-save"
-              ?disabled=${this.selectedBookId === null || this.settingBook}
-              @click=${this.handleSetCurrentBook.bind(this)}
-            >${this.settingBook ? 'Saving...' : 'Set as Current Read'}</button>
+            ${this.showAddBookForm ? html`
+              <button
+                class="btn-save"
+                ?disabled=${this.addingBook}
+                @click=${this.handleAddBook.bind(this)}
+              >${this.addingBook ? 'Adding...' : 'Add Book'}</button>
+            ` : html`
+              <button
+                class="btn-save"
+                ?disabled=${this.selectedBookId === null || this.settingBook}
+                @click=${this.handleSetCurrentBook.bind(this)}
+              >${this.settingBook ? 'Saving...' : 'Set as Current Read'}</button>
+            `}
           </div>
         </div>
       </div>
@@ -849,9 +1016,18 @@ export class CommunityDetailPage extends LitElement {
                 <div class="no-current-book">No current read set yet.</div>
               `}
               ${this.isAdmin() ? html`
-                <button class="btn-set-book" @click=${this.openBookPicker.bind(this)}>
-                  ${this.communityBooks.current ? 'Change Current Book' : 'Set Current Book'}
-                </button>
+                <div class="admin-book-actions">
+                  <button class="btn-set-book" @click=${this.openBookPicker.bind(this)}>
+                    ${this.communityBooks.current ? 'Change Current Book' : 'Set Current Book'}
+                  </button>
+                  ${this.communityBooks.current ? html`
+                    <button
+                      class="btn-finish-book"
+                      ?disabled=${this.finishingBook}
+                      @click=${this.handleFinishBook.bind(this)}
+                    >${this.finishingBook ? 'Finishing...' : 'Finish Book'}</button>
+                  ` : null}
+                </div>
               ` : null}
             </div>
 
@@ -859,7 +1035,9 @@ export class CommunityDetailPage extends LitElement {
               <div class="moderators-title">Moderated by:</div>
               <div class="moderators">
                 <div class="moderator">
-                  <div class="avatar"></div>
+                  ${c.ownerAvatarUrl
+                    ? html`<img class="avatar" src="${c.ownerAvatarUrl}" alt=${ifDefined(c.owner)} />`
+                    : html`<div class="avatar"></div>`}
                   <span>${c.owner ?? 'Unknown'}</span>
                 </div>
               </div>

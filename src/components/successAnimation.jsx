@@ -127,7 +127,8 @@ class SuccessAnimation extends LitElement {
         { h: 33,  s: 44, l: 49 },  // #7f553a (color-1) - warm brown
         { h: 40,  s: 32, l: 63 }, // #a58a64 (color-2) - tan/gold
         { h: 75,  s: 19, l: 36 }, // #646D4A (color-4) - olive green
-        { h: 80,  s: 17, l: 24 }  // #414833 (color-5) - dark green
+        { h: 80,  s: 17, l: 24 }, // #414833 (color-5) - dark green
+        { h: 320, s: 100, l: 28 } // #8f005f - purple
     ];
 
     const base = baseColors[Math.floor(Math.random() * baseColors.length)];

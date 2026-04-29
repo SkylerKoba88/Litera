@@ -95,10 +95,12 @@ pool.getConnection()
 // helper
 async function getUserById(id: number) {
   const [rows] = await pool.query(
-    'SELECT id, username, firstname, lastname, email, dob FROM users WHERE id = ?',
+    'SELECT id, username, firstname, lastname, email, dob, avatar_url FROM users WHERE id = ?',
     [id]
   );
-  return Array.isArray(rows) && rows.length ? rows[0] : null;
+  if (!Array.isArray(rows) || !rows.length) return null;
+  const u = rows[0] as any;
+  return { ...u, avatarUrl: u.avatar_url ?? null };
 }
 
 async function checkUniqueUsernameEmail(username?: string, email?: string, idToIgnore?: number) {
@@ -170,7 +172,7 @@ const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 app.put('/api/users/:id', async (req, res) => {
   const id = Number(req.params.id);
-  const { username, email, firstname, lastname, dob } = req.body || {};
+  const { username, email, firstname, lastname, dob, avatarUrl } = req.body || {};
 
   if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Invalid user id' });
   if (!username || !USERNAME_REGEX.test(username)) return res.status(400).json({ error: 'Bad username' });
@@ -183,8 +185,8 @@ app.put('/api/users/:id', async (req, res) => {
     }
 
     await pool.query(
-      `UPDATE users SET username = ?, email = ?, firstname = ?, lastname = ?, dob = ? WHERE id = ?`,
-      [username, email, firstname, lastname, dob, id]
+      `UPDATE users SET username = ?, email = ?, firstname = ?, lastname = ?, dob = ?, avatar_url = ? WHERE id = ?`,
+      [username, email, firstname, lastname, dob, avatarUrl ?? null, id]
     );
 
     const user = await getUserById(id);
@@ -306,13 +308,15 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // return safe user payload
+    // return safe user payload — re-fetch to pick up avatar_url
+    const fullUser = await getUserById(user.id);
     res.json({
       success: true,
       user: {
         id: user.id,
         username: user.username,
         email: user.email,
+        avatarUrl: fullUser?.avatarUrl ?? null,
       },
     });
   } catch (err) {
@@ -344,6 +348,7 @@ function rowToCommunity(row: any) {
     id: row.id,
     ownerId: row.owner_id,
     owner: row.owner ?? undefined,
+    ownerAvatarUrl: row.owner_avatar_url ?? undefined,
     name: row.name,
     description: row.description,
     categories: parseMaybeTwice(row.categories, []),
@@ -355,11 +360,118 @@ function rowToCommunity(row: any) {
   };
 }
 
+// GET /api/communities/current-reads?user_id=X
+// Returns the current book for every community the user is a member of.
+// Must be declared before /:id so Express doesn't swallow "current-reads" as an id.
+app.get('/api/communities/current-reads', async (req, res) => {
+  const userId = Number(req.query.user_id);
+  if (!Number.isInteger(userId) || userId < 1)
+    return res.status(400).json({ error: 'valid user_id is required' });
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT c.id AS community_id, c.name AS community_name,
+              b.id, b.isbn13, b.title, b.subtitle, b.authors, b.categories,
+              b.thumbnail, b.description, b.published_year, b.average_rating
+       FROM community_members cm
+       JOIN communities c ON cm.community_id = c.id
+       JOIN community_books cb ON cb.community_id = c.id AND cb.status = 'current'
+       JOIN books b ON cb.book_id = b.id
+       WHERE cm.user_id = ?`,
+      [userId]
+    );
+    const result = (Array.isArray(rows) ? rows as any[] : []).map(r => ({
+      communityId: r.community_id,
+      communityName: r.community_name,
+      book: {
+        id: r.id, isbn13: r.isbn13, title: r.title, subtitle: r.subtitle,
+        authors: r.authors, categories: r.categories, thumbnail: r.thumbnail,
+        description: r.description, published_year: r.published_year,
+        average_rating: r.average_rating,
+      },
+    }));
+    res.json(result);
+  } catch (e) {
+    console.error('community current-reads error', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ----------- SHELF ROUTES --------------
+
+// GET /api/shelves?user_id=X
+app.get('/api/shelves', async (req, res) => {
+  const userId = Number(req.query.user_id);
+  if (!Number.isInteger(userId) || userId < 1)
+    return res.status(400).json({ error: 'valid user_id is required' });
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT s.id AS shelf_id, s.name AS shelf_name, s.created_at AS shelf_created,
+              b.id, b.isbn13, b.title, b.subtitle, b.authors, b.categories,
+              b.thumbnail, b.description, b.published_year, b.average_rating
+       FROM user_shelves s
+       LEFT JOIN shelf_books sb ON sb.shelf_id = s.id
+       LEFT JOIN books b ON sb.book_id = b.id
+       WHERE s.user_id = ?
+       ORDER BY s.created_at DESC, sb.added_at ASC`,
+      [userId]
+    );
+    const shelfMap = new Map<number, { id: number; name: string; books: any[] }>();
+    for (const r of (Array.isArray(rows) ? rows as any[] : [])) {
+      if (!shelfMap.has(r.shelf_id)) {
+        shelfMap.set(r.shelf_id, { id: r.shelf_id, name: r.shelf_name, books: [] });
+      }
+      if (r.id != null) {
+        shelfMap.get(r.shelf_id)!.books.push({
+          id: r.id, isbn13: r.isbn13, title: r.title, subtitle: r.subtitle,
+          authors: r.authors, categories: r.categories, thumbnail: r.thumbnail,
+          description: r.description, published_year: r.published_year,
+          average_rating: r.average_rating,
+        });
+      }
+    }
+    res.json([...shelfMap.values()]);
+  } catch (e) {
+    console.error('fetch shelves error', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/shelves — body: { user_id, name, book_ids: number[] }
+app.post('/api/shelves', async (req, res) => {
+  const userId = Number((req.body || {}).user_id);
+  const name = typeof (req.body || {}).name === 'string' ? (req.body.name as string).trim() : '';
+  const bookIds: number[] = Array.isArray((req.body || {}).book_ids)
+    ? (req.body.book_ids as any[]).map(Number).filter(n => Number.isInteger(n) && n > 0)
+    : [];
+
+  if (!Number.isInteger(userId) || userId < 1)
+    return res.status(400).json({ error: 'valid user_id is required' });
+  if (!name) return res.status(400).json({ error: 'name is required' });
+
+  try {
+    const [result] = await pool.query<mysql.ResultSetHeader>(
+      'INSERT INTO user_shelves (user_id, name) VALUES (?, ?)',
+      [userId, name]
+    );
+    const shelfId = result.insertId;
+    if (bookIds.length > 0) {
+      const values = bookIds.map(bid => [shelfId, bid]);
+      await pool.query('INSERT IGNORE INTO shelf_books (shelf_id, book_id) VALUES ?', [values]);
+    }
+    res.status(201).json({ id: shelfId, name, books: [] });
+  } catch (e) {
+    console.error('create shelf error', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.get('/api/communities', async (_req, res) => {
   try {
     const [rows] = await pool.query(
       `
-      SELECT c.*, u.username AS owner
+      SELECT c.*, u.username AS owner, u.avatar_url AS owner_avatar_url
       FROM communities c
       JOIN users u ON c.owner_id = u.id
       ORDER BY c.created_at DESC
@@ -382,7 +494,7 @@ app.get('/api/communities/:id', async (req, res) => {
   try {
     const [rows] = await pool.query(
       `
-      SELECT c.*, u.username AS owner
+      SELECT c.*, u.username AS owner, u.avatar_url AS owner_avatar_url
       FROM communities c
       JOIN users u ON c.owner_id = u.id
       WHERE c.id = ?
@@ -492,7 +604,7 @@ app.post('/api/communities', async (req, res) => {
     // Read back through the shared projection so the response shape matches GET.
     const [rows] = await pool.query(
       `
-      SELECT c.*, u.username AS owner
+      SELECT c.*, u.username AS owner, u.avatar_url AS owner_avatar_url
       FROM communities c
       JOIN users u ON c.owner_id = u.id
       WHERE c.id = ?
@@ -664,7 +776,7 @@ app.put('/api/communities/:id', async (req, res) => {
     );
 
     const [rows] = await pool.query(
-      `SELECT c.*, u.username AS owner FROM communities c JOIN users u ON c.owner_id = u.id WHERE c.id = ? LIMIT 1`,
+      `SELECT c.*, u.username AS owner, u.avatar_url AS owner_avatar_url FROM communities c JOIN users u ON c.owner_id = u.id WHERE c.id = ? LIMIT 1`,
       [id]
     );
     res.json(Array.isArray(rows) && rows.length ? rowToCommunity(rows[0]) : null);
@@ -735,6 +847,45 @@ app.get('/api/communities/:id/books', async (req, res) => {
   }
 });
 
+// PATCH /api/communities/:id/books/current — demote current book to previous (finish it)
+app.patch('/api/communities/:id/books/current', async (req, res) => {
+  const communityId = Number(req.params.id);
+  const requestingUserId = Number((req.body || {}).requesting_user_id);
+
+  if (!Number.isInteger(communityId) || communityId < 1)
+    return res.status(400).json({ error: 'Invalid community id' });
+  if (!Number.isInteger(requestingUserId) || requestingUserId < 1)
+    return res.status(400).json({ error: 'valid requesting_user_id is required' });
+
+  try {
+    const [communityRows] = await pool.query(
+      'SELECT owner_id FROM communities WHERE id = ? LIMIT 1',
+      [communityId]
+    );
+    if (!Array.isArray(communityRows) || communityRows.length === 0)
+      return res.status(404).json({ error: 'Community not found' });
+
+    const [memberRows] = await pool.query(
+      'SELECT community_role FROM community_members WHERE user_id = ? AND community_id = ? LIMIT 1',
+      [requestingUserId, communityId]
+    );
+    const isOwner = (communityRows[0] as any).owner_id === requestingUserId;
+    const isAdmin = Array.isArray(memberRows) && memberRows.length > 0 &&
+      (memberRows[0] as any).community_role === 'admin';
+    if (!isOwner && !isAdmin)
+      return res.status(403).json({ error: 'Only admins can finish the current book' });
+
+    const [result] = await pool.query<mysql.ResultSetHeader>(
+      `UPDATE community_books SET status = 'previous' WHERE community_id = ? AND status = 'current'`,
+      [communityId]
+    );
+    res.json({ success: true, updated: result.affectedRows > 0 });
+  } catch (e) {
+    console.error('finish book error', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // POST /api/communities/:id/books — set a new current book (owner/admin only)
 // Body: { book_id, requesting_user_id }
 // The previous current book (if any) is automatically demoted to 'previous'.
@@ -794,6 +945,37 @@ app.post('/api/communities/:id/books', async (req, res) => {
 });
 
 // ----------- BOOK ROUTES --------------
+
+// Add a new book manually (used when the book isn't found in the library)
+app.post('/api/books', async (req, res) => {
+  const { title, authors, isbn13, thumbnail, published_year, description } = req.body || {};
+
+  if (!title?.trim()) return res.status(400).json({ error: 'title is required' });
+  if (!authors?.trim()) return res.status(400).json({ error: 'authors is required' });
+
+  // Auto-generate a placeholder isbn13 if not supplied (field is NOT NULL, max 13 chars)
+  const isbn = isbn13?.trim() || `USR${Date.now().toString().slice(-10)}`;
+
+  try {
+    const [result] = await pool.query<mysql.ResultSetHeader>(
+      `INSERT INTO books (isbn13, title, authors, thumbnail, published_year, description)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        isbn.slice(0, 13),
+        title.trim(),
+        authors.trim(),
+        thumbnail?.trim() || null,
+        published_year ? Number(published_year) : null,
+        description?.trim() || null,
+      ]
+    );
+    const [rows] = await pool.query('SELECT * FROM books WHERE id = ? LIMIT 1', [result.insertId]);
+    res.status(201).json(Array.isArray(rows) && rows.length ? rows[0] : null);
+  } catch (e) {
+    console.error('create book error', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 app.get('/api/books', async (_req, res) => {
   try {

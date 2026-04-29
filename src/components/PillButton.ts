@@ -30,13 +30,12 @@ export class PillButton extends LitElement {
 
   toggleMode = () => {
     if (!this.selected) {
-      const selectedCount = document.querySelectorAll(
-        "pill-button[selected]"
-      ).length;
-
+      // getRootNode() returns the containing ShadowRoot (or document) so we
+      // can find sibling pill-buttons that live inside shadow DOM.
+      const root = this.getRootNode() as ShadowRoot | Document;
+      const selectedCount = root.querySelectorAll("pill-button[selected]").length;
       if (selectedCount >= 5) return;
     }
-
     this.selected = !this.selected;
   };
 

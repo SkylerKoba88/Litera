@@ -184,6 +184,8 @@ export const CommunityCreationPage = ({
     <style>${styles}</style>
 
     <!-- Banner -->
+    <button style="margin: 16px 24px; background: transparent; color: var(--color-5); border: none; font-size: 1rem; cursor: pointer; padding: 6px 0;"
+      @click=${() => window.location.hash = '#/communities'}>&larr; Back</button>
     <div class="banner">
       <h1>Create a New Community</h1>
     </div>

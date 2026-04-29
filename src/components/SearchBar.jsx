@@ -23,6 +23,7 @@ class SearchBar extends LitElement {
     :host {
       display: block;
       width: 100%;
+      max-width: 30em;
       position: relative;
     }
 
@@ -31,7 +32,7 @@ class SearchBar extends LitElement {
         background-color: var(--color-3);
         border-radius: 50px;
         padding: 1em;
-        width: 30em;
+        width: 100%;
         align-items: center;
         justify-content: space-between;
     }
@@ -53,6 +54,13 @@ class SearchBar extends LitElement {
         justify-content: flex-start;
     }
 
+    #right {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-shrink: 0;
+    }
+
     #right button {
         position: relative;
         background-color: transparent;
@@ -63,6 +71,24 @@ class SearchBar extends LitElement {
         cursor: pointer;
         color: var(--color-5);
     }
+
+    .clear-btn {
+        background: rgba(0,0,0,0.12);
+        border: none;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 12px;
+        color: var(--color-5);
+        line-height: 1;
+        padding: 0;
+        flex-shrink: 0;
+    }
+    .clear-btn:hover { background: rgba(0,0,0,0.22); }
 
     #dropdown {
         position: absolute;
@@ -194,6 +220,16 @@ class SearchBar extends LitElement {
     this._dispatchSearch();
   }
 
+  clearSearch() {
+    this._query = '';
+    this.activeFilters = [];
+    this.requestUpdate();
+    this._dispatchSearch();
+    // Also clear the native input value
+    const input = this.shadowRoot?.querySelector('input');
+    if (input) input.value = '';
+  }
+
   render() {
     return html`
       <div id="content">
@@ -208,6 +244,9 @@ class SearchBar extends LitElement {
         </div>
 
         <div id="right">
+          ${(this._query || this.activeFilters.length > 0) ? html`
+            <button class="clear-btn" title="Clear search" @click=${(e) => { e.stopPropagation(); this.clearSearch(); }}>✕</button>
+          ` : null}
           <button @click=${(e) => {e.stopPropagation(); this.toggleDropdown()}}>
             Filter
           </button>

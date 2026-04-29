@@ -40,6 +40,7 @@ export type AuthUser = {
   id: number;
   username: string;
   email: string;
+  avatarUrl?: string | null;
 };
 
 export type CommunityVisibility = 'public' | 'private';
@@ -58,6 +59,7 @@ export type Community = {
   id: number;
   ownerId: number;
   owner?: string; // owner's username — server includes this on GET
+  ownerAvatarUrl?: string; // owner's avatar — server includes this on GET
   name: string;
   description: string;
   categories: Categories;
@@ -144,13 +146,14 @@ export async function updateUserInformation(
   firstname: string,
   lastname: string,
   email: string,
-  dob: string
+  dob: string,
+  avatarUrl?: string
 ) {
   const dobValue = dob ? dob : null;
   const res = await fetch(`${API_BASE}/api/users/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, firstname, lastname, email, dob: dobValue })
+    body: JSON.stringify({ username, firstname, lastname, email, dob: dobValue, avatarUrl: avatarUrl ?? null })
   });
   const raw = await res.text();
   return handleResponse(raw, res);
@@ -238,6 +241,23 @@ export type BookRecord = {
   published_year: number | null;
   average_rating: number | null;
 };
+
+export async function createBook(book: {
+  title: string;
+  authors: string;
+  isbn13?: string;
+  thumbnail?: string;
+  published_year?: number;
+  description?: string;
+}): Promise<BookRecord> {
+  const res = await fetch(`${API_BASE}/api/books`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(book),
+  });
+  const raw = await res.text();
+  return handleResponse(raw, res);
+}
 
 export async function fetchBooks(): Promise<BookRecord[]> {
   const res = await fetch(`${API_BASE}/api/books`);
@@ -397,8 +417,56 @@ export type CommunityBooks = {
   previous: BookRecord[];
 };
 
+export type CommunityRead = {
+  communityId: number;
+  communityName: string;
+  book: BookRecord;
+};
+
+export type UserShelf = {
+  id: number;
+  name: string;
+  books: BookRecord[];
+};
+
+export async function fetchCommunityCurrentReads(userId: number): Promise<CommunityRead[]> {
+  const res = await fetch(`${API_BASE}/api/communities/current-reads?user_id=${userId}`);
+  const raw = await res.text();
+  return handleResponse(raw, res);
+}
+
+export async function fetchUserShelves(userId: number): Promise<UserShelf[]> {
+  const res = await fetch(`${API_BASE}/api/shelves?user_id=${userId}`);
+  const raw = await res.text();
+  return handleResponse(raw, res);
+}
+
+export async function createUserShelf(name: string, bookIds: number[]): Promise<UserShelf> {
+  const user = getCurrentUser();
+  if (!user) throw new Error('Must be logged in to create a shelf');
+  const res = await fetch(`${API_BASE}/api/shelves`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: user.id, name, book_ids: bookIds }),
+  });
+  const raw = await res.text();
+  return handleResponse(raw, res);
+}
+
 export async function fetchCommunityBooks(communityId: number): Promise<CommunityBooks> {
   const res = await fetch(`${API_BASE}/api/communities/${communityId}/books`);
+  const raw = await res.text();
+  return handleResponse(raw, res);
+}
+
+export async function finishCurrentBook(communityId: number): Promise<{ success: boolean }> {
+  const user = getCurrentUser();
+  if (!user) throw new Error('Must be logged in to finish the current book');
+  const res = await fetch(`${API_BASE}/api/communities/${communityId}/books/current`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requesting_user_id: user.id }),
+  });
   const raw = await res.text();
   return handleResponse(raw, res);
 }
