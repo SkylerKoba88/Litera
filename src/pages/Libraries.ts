@@ -15,6 +15,7 @@ import {
     fetchCommunityCurrentReads,
     fetchUserShelves,
     createUserShelf,
+    updateUserShelf,
     type BookRecord,
     type CommunityRead,
     type UserShelf,
@@ -40,6 +41,15 @@ export class LibrariesPage extends LitElement {
     @state() private shelfSearchQuery = '';
     @state() private creatingShelf = false;
     @state() private shelfError = '';
+
+    // Shelf editor state
+    @state() private showShelfEditor = false;
+    @state() private editingShelf: UserShelf | null = null;
+    @state() private editShelfName = '';
+    @state() private editShelfSelectedIds: Set<number> = new Set();
+    @state() private editShelfSearchQuery = '';
+    @state() private savingShelf = false;
+    @state() private editShelfError = '';
 
     static styles = css`
         :host { display: block; }
@@ -415,6 +425,129 @@ export class LibrariesPage extends LitElement {
         }
     }
 
+    private openShelfEditor(shelf: UserShelf) {
+        this.editingShelf = shelf;
+        this.editShelfName = shelf.name;
+        this.editShelfSelectedIds = new Set(shelf.books.map(b => b.id));
+        this.editShelfSearchQuery = '';
+        this.editShelfError = '';
+        this.showShelfEditor = true;
+    }
+
+    private toggleEditShelfBook(id: number) {
+        const next = new Set(this.editShelfSelectedIds);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        this.editShelfSelectedIds = next;
+    }
+
+    private async handleUpdateShelf() {
+        if (!this.editingShelf) return;
+        if (!this.editShelfName.trim()) { this.editShelfError = 'Shelf name is required.'; return; }
+        this.savingShelf = true;
+        this.editShelfError = '';
+        try {
+            await updateUserShelf(this.editingShelf.id, this.editShelfName.trim(), [...this.editShelfSelectedIds]);
+            this.userShelves = this.userShelves.map(s =>
+                s.id === this.editingShelf!.id
+                    ? { ...s, name: this.editShelfName.trim(), books: this.books.filter(b => this.editShelfSelectedIds.has(b.id)) }
+                    : s
+            );
+            this.showShelfEditor = false;
+            this.editingShelf = null;
+        } catch (e) {
+            this.editShelfError = e instanceof Error ? e.message : 'Failed to save changes.';
+        } finally {
+            this.savingShelf = false;
+        }
+    }
+
+    private renderShelfEditorModal(): TemplateResult {
+        const q = this.editShelfSearchQuery.toLowerCase();
+        const favBooks = this.books.filter(b => this.favoriteIds.has(b.id));
+        const otherBooks = this.books.filter(b => !this.favoriteIds.has(b.id));
+        const filterFn = (b: BookRecord) =>
+            !q || b.title.toLowerCase().includes(q) || b.authors.toLowerCase().includes(q);
+        const filteredFavs = favBooks.filter(filterFn);
+        const filteredOthers = otherBooks.filter(filterFn);
+        const showFavSection = filteredFavs.length > 0;
+        const showOtherSection = filteredOthers.length > 0;
+
+        const bookRow = (b: BookRecord, isFav: boolean) => html`
+            <div
+                class="book-picker-item ${this.editShelfSelectedIds.has(b.id) ? 'selected' : ''}"
+                @click=${() => this.toggleEditShelfBook(b.id)}
+            >
+                <div class="check-icon">${this.editShelfSelectedIds.has(b.id) ? '✓' : ''}</div>
+                ${b.thumbnail
+                    ? html`<img class="book-picker-thumb" src="${b.thumbnail}" alt="${b.title}" />`
+                    : html`<div class="book-picker-thumb"></div>`}
+                <div class="book-picker-info">
+                    <div class="book-picker-title">
+                        ${b.title}
+                        ${isFav ? html`<span class="fav-badge">♥ Favorite</span>` : null}
+                    </div>
+                    <div class="book-picker-author">${b.authors}</div>
+                </div>
+            </div>
+        `;
+
+        return html`
+            <div class="overlay" @click=${(e: Event) => { if (e.target === e.currentTarget) this.showShelfEditor = false; }}>
+                <div class="modal">
+                    <h2>Edit Shelf</h2>
+
+                    <div class="form-field">
+                        <label>Shelf Name <span style="color:#c0392b">*</span></label>
+                        <input
+                            .value=${this.editShelfName}
+                            placeholder="e.g. Summer Reads, Must-Reads..."
+                            @input=${(e: Event) => { this.editShelfName = (e.target as HTMLInputElement).value; }}
+                        />
+                    </div>
+
+                    <input
+                        class="picker-search"
+                        type="text"
+                        placeholder="Search books..."
+                        .value=${this.editShelfSearchQuery}
+                        @input=${(e: Event) => { this.editShelfSearchQuery = (e.target as HTMLInputElement).value; }}
+                    />
+
+                    <div class="book-picker-list">
+                        ${showFavSection ? html`
+                            <div class="section-label">♥ Your Favorites</div>
+                            ${filteredFavs.slice(0, 50).map(b => bookRow(b, true))}
+                        ` : null}
+                        ${showOtherSection ? html`
+                            ${showFavSection ? html`<div class="section-label">All Books</div>` : null}
+                            ${filteredOthers.slice(0, 50).map(b => bookRow(b, false))}
+                        ` : null}
+                        ${!showFavSection && !showOtherSection
+                            ? html`<div style="padding:16px;color:#999;text-align:center;">No books found.</div>`
+                            : null}
+                    </div>
+
+                    <div class="selected-count">
+                        ${this.editShelfSelectedIds.size === 0
+                            ? 'No books selected'
+                            : `${this.editShelfSelectedIds.size} book${this.editShelfSelectedIds.size === 1 ? '' : 's'} selected`}
+                    </div>
+
+                    ${this.editShelfError ? html`<p class="shelf-error">${this.editShelfError}</p>` : null}
+
+                    <div class="modal-actions">
+                        <button class="btn-cancel" @click=${() => { this.showShelfEditor = false; }}>Cancel</button>
+                        <button
+                            class="btn-save"
+                            ?disabled=${this.savingShelf}
+                            @click=${this.handleUpdateShelf.bind(this)}
+                        >${this.savingShelf ? 'Saving...' : 'Save Changes'}</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     private renderShelfCreatorModal(): TemplateResult {
         const q = this.shelfSearchQuery.toLowerCase();
         const favBooks = this.books.filter(b => this.favoriteIds.has(b.id));
@@ -513,6 +646,7 @@ export class LibrariesPage extends LitElement {
 
         return html`
             ${this.showShelfCreator ? this.renderShelfCreatorModal() : null}
+            ${this.showShelfEditor ? this.renderShelfEditorModal() : null}
 
             <success-animation></success-animation>
             <bread-crumb></bread-crumb>
@@ -575,7 +709,13 @@ export class LibrariesPage extends LitElement {
 
                         ${this.userShelves.map(shelf => html`
                             <div class="section">
-                                <div class="section-heading">${shelf.name}</div>
+                                <div class="section-heading" style="display:flex;align-items:center;gap:10px;">
+                                    ${shelf.name}
+                                    <button
+                                        style="font-size:0.78rem;font-weight:600;padding:3px 10px;border-radius:6px;border:1px solid #ccc;background:white;color:#555;cursor:pointer;"
+                                        @click=${() => this.openShelfEditor(shelf)}
+                                    >Edit</button>
+                                </div>
                                 <community-container>
                                     ${shelf.books.length
                                         ? shelf.books.map(b => this.renderBookCard(b))

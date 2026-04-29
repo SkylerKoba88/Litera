@@ -197,23 +197,6 @@ class BookCard extends LitElement {
             .b7 { background: var(--color-4); animation-name: bw;  animation-delay: 0s;     }
             .b8 { background: var(--color-5); animation-name: bnw; animation-delay: 0.04s;  }
 
-            /* ── card hover expansions ────────────────────────────── */
-            .book:hover {
-                width: 17em;
-                transition: ease-in-out .2s;
-            }
-
-            .book:hover h3 {
-                width: 8em;
-                transition: ease-in-out .2s;
-                font-size: 1.4em;
-                height: 50%;
-            }
-
-            .book:hover::after {
-                width: 16.5em;
-                transition: ease-in-out .2s;
-            }
         `;
     }
 

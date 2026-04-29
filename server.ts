@@ -94,15 +94,25 @@ pool.getConnection()
 
 // helper
 async function getUserById(id: number) {
-  const [rows] = await pool.query(
-    'SELECT id, username, firstname, lastname, email, dob, avatar_url, bio, interests FROM users WHERE id = ?',
-    [id]
-  );
+  let rows: any;
+  try {
+    [rows] = await pool.query(
+      'SELECT id, username, firstname, lastname, email, dob, avatar_url, bio, interests FROM users WHERE id = ?',
+      [id]
+    );
+  } catch (_e) {
+    // bio/interests columns may not exist yet — fall back to base columns
+    [rows] = await pool.query(
+      'SELECT id, username, firstname, lastname, email, dob, avatar_url FROM users WHERE id = ?',
+      [id]
+    );
+  }
   if (!Array.isArray(rows) || !rows.length) return null;
-  const u = rows[0] as any;
+  const u = (rows as any[])[0] as any;
   return {
     ...u,
     avatarUrl: u.avatar_url ?? null,
+    bio: u.bio ?? null,
     interests: u.interests ? JSON.parse(u.interests) : [],
   };
 }
@@ -191,10 +201,18 @@ app.put('/api/users/:id', async (req, res) => {
       return res.status(409).json({ error: 'Username or email already in use', conflicts });
     }
 
-    await pool.query(
-      `UPDATE users SET username = ?, email = ?, firstname = ?, lastname = ?, dob = ?, avatar_url = ?, bio = ?, interests = ? WHERE id = ?`,
-      [username, email, firstname, lastname, dob, avatarUrl ?? null, bioValue, interestsValue, id]
-    );
+    try {
+      await pool.query(
+        `UPDATE users SET username = ?, email = ?, firstname = ?, lastname = ?, dob = ?, avatar_url = ?, bio = ?, interests = ? WHERE id = ?`,
+        [username, email, firstname, lastname, dob, avatarUrl ?? null, bioValue, interestsValue, id]
+      );
+    } catch (_e) {
+      // bio/interests columns may not exist yet — update without them
+      await pool.query(
+        `UPDATE users SET username = ?, email = ?, firstname = ?, lastname = ?, dob = ?, avatar_url = ? WHERE id = ?`,
+        [username, email, firstname, lastname, dob, avatarUrl ?? null, id]
+      );
+    }
 
     const user = await getUserById(id);
     res.json({ success: true, user });
@@ -441,6 +459,45 @@ app.get('/api/shelves', async (req, res) => {
     res.json([...shelfMap.values()]);
   } catch (e) {
     console.error('fetch shelves error', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// PUT /api/shelves/:id — body: { user_id, name, book_ids: number[] }
+app.put('/api/shelves/:id', async (req, res) => {
+  const shelfId = Number(req.params.id);
+  if (!Number.isNaN(shelfId) && shelfId < 1) return res.status(400).json({ error: 'Invalid shelf id' });
+
+  const body = req.body || {};
+  const userId = Number(body.user_id);
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  const bookIds: number[] = Array.isArray(body.book_ids)
+    ? (body.book_ids as any[]).map(Number).filter(n => Number.isInteger(n) && n > 0)
+    : [];
+
+  if (!Number.isInteger(userId) || userId < 1)
+    return res.status(400).json({ error: 'valid user_id is required' });
+  if (!name) return res.status(400).json({ error: 'name is required' });
+
+  try {
+    const [rows] = await pool.query(
+      'SELECT id, user_id FROM user_shelves WHERE id = ? LIMIT 1',
+      [shelfId]
+    );
+    if (!Array.isArray(rows) || rows.length === 0)
+      return res.status(404).json({ error: 'Shelf not found' });
+    if ((rows[0] as any).user_id !== userId)
+      return res.status(403).json({ error: 'Not authorized to edit this shelf' });
+
+    await pool.query('UPDATE user_shelves SET name = ? WHERE id = ?', [name, shelfId]);
+    await pool.query('DELETE FROM shelf_books WHERE shelf_id = ?', [shelfId]);
+    if (bookIds.length > 0) {
+      const values = bookIds.map(bid => [shelfId, bid]);
+      await pool.query('INSERT IGNORE INTO shelf_books (shelf_id, book_id) VALUES ?', [values]);
+    }
+    res.json({ success: true });
+  } catch (e) {
+    console.error('update shelf error', e);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -1204,6 +1261,260 @@ app.post("/api/meet/create", async (req, res) => {
   }
 });
 
+
+// ----------- FRIEND ROUTES --------------
+
+// GET /api/friends/status — must be declared before any /:id pattern on /api/friends
+app.get('/api/friends/status', async (req, res) => {
+  const userId = Number(req.query.user_id);
+  const otherUserId = Number(req.query.other_user_id);
+  if (!Number.isInteger(userId) || userId < 1 || !Number.isInteger(otherUserId) || otherUserId < 1)
+    return res.status(400).json({ error: 'valid user_id and other_user_id are required' });
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT id, requester_id, addressee_id, status
+       FROM friendships
+       WHERE (requester_id = ? AND addressee_id = ?) OR (requester_id = ? AND addressee_id = ?)
+       LIMIT 1`,
+      [userId, otherUserId, otherUserId, userId]
+    );
+    if (!Array.isArray(rows) || rows.length === 0) return res.json({ status: 'none' });
+    const row = rows[0] as any;
+    if (row.status === 'accepted') return res.json({ status: 'accepted', requestId: row.id });
+    if (row.status === 'pending') {
+      return res.json({
+        status: row.requester_id === userId ? 'pending_sent' : 'pending_received',
+        requestId: row.id,
+      });
+    }
+    return res.json({ status: 'none' });
+  } catch (e) {
+    console.error('friend status error', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/friends/request — body: { from_user_id, to_user_id }
+app.post('/api/friends/request', async (req, res) => {
+  const fromUserId = Number((req.body || {}).from_user_id);
+  const toUserId = Number((req.body || {}).to_user_id);
+  if (!Number.isInteger(fromUserId) || fromUserId < 1)
+    return res.status(400).json({ error: 'valid from_user_id is required' });
+  if (!Number.isInteger(toUserId) || toUserId < 1)
+    return res.status(400).json({ error: 'valid to_user_id is required' });
+  if (fromUserId === toUserId)
+    return res.status(400).json({ error: 'Cannot send friend request to yourself' });
+
+  try {
+    const [existing] = await pool.query(
+      `SELECT id, status FROM friendships
+       WHERE (requester_id = ? AND addressee_id = ?) OR (requester_id = ? AND addressee_id = ?)
+       LIMIT 1`,
+      [fromUserId, toUserId, toUserId, fromUserId]
+    );
+    if (Array.isArray(existing) && existing.length > 0) {
+      const row = existing[0] as any;
+      if (row.status === 'accepted') return res.status(409).json({ error: 'Already friends' });
+      if (row.status === 'pending') return res.status(409).json({ error: 'Request already pending' });
+      // declined — allow re-sending
+      await pool.query('DELETE FROM friendships WHERE id = ?', [row.id]);
+    }
+    const [result] = await pool.query<mysql.ResultSetHeader>(
+      `INSERT INTO friendships (requester_id, addressee_id, status) VALUES (?, ?, 'pending')`,
+      [fromUserId, toUserId]
+    );
+    res.status(201).json({ success: true, id: result.insertId });
+  } catch (e) {
+    console.error('send friend request error', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /api/friends?user_id=X — accepted friends with profile info
+app.get('/api/friends', async (req, res) => {
+  const userId = Number(req.query.user_id);
+  if (!Number.isInteger(userId) || userId < 1)
+    return res.status(400).json({ error: 'valid user_id is required' });
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT u.id, u.username, u.avatar_url
+       FROM friendships f
+       JOIN users u ON u.id = IF(f.requester_id = ?, f.addressee_id, f.requester_id)
+       WHERE (f.requester_id = ? OR f.addressee_id = ?) AND f.status = 'accepted'`,
+      [userId, userId, userId]
+    );
+    const friends = (Array.isArray(rows) ? rows as any[] : []).map(r => ({
+      id: r.id,
+      username: r.username,
+      avatarUrl: r.avatar_url ?? null,
+    }));
+    res.json(friends);
+  } catch (e) {
+    console.error('get friends error', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// PATCH /api/friends/:id/respond — body: { user_id, status: 'accepted'|'declined' }
+app.patch('/api/friends/:id/respond', async (req, res) => {
+  const requestId = Number(req.params.id);
+  const userId = Number((req.body || {}).user_id);
+  const newStatus = (req.body || {}).status;
+  if (!Number.isInteger(requestId) || requestId < 1)
+    return res.status(400).json({ error: 'Invalid request id' });
+  if (!Number.isInteger(userId) || userId < 1)
+    return res.status(400).json({ error: 'valid user_id is required' });
+  if (newStatus !== 'accepted' && newStatus !== 'declined')
+    return res.status(400).json({ error: 'status must be accepted or declined' });
+
+  try {
+    const [rows] = await pool.query(
+      'SELECT id, requester_id, addressee_id, status FROM friendships WHERE id = ? LIMIT 1',
+      [requestId]
+    );
+    if (!Array.isArray(rows) || rows.length === 0)
+      return res.status(404).json({ error: 'Friend request not found' });
+    const row = rows[0] as any;
+    if (row.addressee_id !== userId)
+      return res.status(403).json({ error: 'Only the recipient can respond to this request' });
+    if (row.status !== 'pending')
+      return res.status(409).json({ error: 'Request is no longer pending' });
+
+    await pool.query('UPDATE friendships SET status = ? WHERE id = ?', [newStatus, requestId]);
+    res.json({ success: true });
+  } catch (e) {
+    console.error('respond to friend request error', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// DELETE /api/friends — body: { user_id, friend_id }
+app.delete('/api/friends', async (req, res) => {
+  const userId = Number((req.body || {}).user_id);
+  const friendId = Number((req.body || {}).friend_id);
+  if (!Number.isInteger(userId) || userId < 1)
+    return res.status(400).json({ error: 'valid user_id is required' });
+  if (!Number.isInteger(friendId) || friendId < 1)
+    return res.status(400).json({ error: 'valid friend_id is required' });
+
+  try {
+    await pool.query(
+      `DELETE FROM friendships
+       WHERE (requester_id = ? AND addressee_id = ?) OR (requester_id = ? AND addressee_id = ?)`,
+      [userId, friendId, friendId, userId]
+    );
+    res.json({ success: true });
+  } catch (e) {
+    console.error('remove friend error', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/communities/:id/members/add — body: { user_ids: [], requesting_user_id }
+app.post('/api/communities/:id/members/add', async (req, res) => {
+  const communityId = Number(req.params.id);
+  if (!Number.isInteger(communityId) || communityId < 1)
+    return res.status(400).json({ error: 'Invalid community id' });
+
+  const body = req.body || {};
+  const requestingUserId = Number(body.requesting_user_id);
+  const userIds: number[] = Array.isArray(body.user_ids)
+    ? (body.user_ids as any[]).map(Number).filter(n => Number.isInteger(n) && n > 0)
+    : [];
+
+  if (!Number.isInteger(requestingUserId) || requestingUserId < 1)
+    return res.status(400).json({ error: 'valid requesting_user_id is required' });
+  if (userIds.length === 0)
+    return res.status(400).json({ error: 'user_ids must be a non-empty array' });
+
+  try {
+    const [communityRows] = await pool.query(
+      'SELECT owner_id FROM communities WHERE id = ? LIMIT 1',
+      [communityId]
+    );
+    if (!Array.isArray(communityRows) || communityRows.length === 0)
+      return res.status(404).json({ error: 'Community not found' });
+
+    const [memberRows] = await pool.query(
+      'SELECT community_role FROM community_members WHERE user_id = ? AND community_id = ? LIMIT 1',
+      [requestingUserId, communityId]
+    );
+    const isOwner = (communityRows[0] as any).owner_id === requestingUserId;
+    const isAdmin = Array.isArray(memberRows) && memberRows.length > 0 &&
+      (memberRows[0] as any).community_role === 'admin';
+    if (!isOwner && !isAdmin)
+      return res.status(403).json({ error: 'Only admins can add members' });
+
+    const values = userIds.map(uid => [uid, communityId, 'member']);
+    await pool.query(
+      'INSERT IGNORE INTO community_members (user_id, community_id, community_role) VALUES ?',
+      [values]
+    );
+    res.json({ success: true, added: userIds.length });
+  } catch (e) {
+    console.error('add community members error', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// DELETE /api/threads/:threadId/posts/:postId — body: { requesting_user_id }
+// Post author OR community admin/owner may delete
+app.delete('/api/threads/:threadId/posts/:postId', async (req, res) => {
+  const threadId = Number(req.params.threadId);
+  const postId = Number(req.params.postId);
+  const requestingUserId = Number((req.body || {}).requesting_user_id);
+
+  if (!Number.isInteger(threadId) || threadId < 1)
+    return res.status(400).json({ error: 'Invalid thread id' });
+  if (!Number.isInteger(postId) || postId < 1)
+    return res.status(400).json({ error: 'Invalid post id' });
+  if (!Number.isInteger(requestingUserId) || requestingUserId < 1)
+    return res.status(400).json({ error: 'valid requesting_user_id is required' });
+
+  try {
+    const [postRows] = await pool.query(
+      'SELECT id, thread_id, user_id FROM forum_posts WHERE id = ? AND thread_id = ? LIMIT 1',
+      [postId, threadId]
+    );
+    if (!Array.isArray(postRows) || postRows.length === 0)
+      return res.status(404).json({ error: 'Post not found' });
+
+    const post = postRows[0] as any;
+    if (post.user_id !== requestingUserId) {
+      // Not the author — check if community admin/owner
+      const [threadRows] = await pool.query(
+        'SELECT community_id FROM forum_threads WHERE id = ? LIMIT 1',
+        [threadId]
+      );
+      if (!Array.isArray(threadRows) || threadRows.length === 0)
+        return res.status(404).json({ error: 'Thread not found' });
+      const communityId = (threadRows[0] as any).community_id;
+
+      const [communityRows] = await pool.query(
+        'SELECT owner_id FROM communities WHERE id = ? LIMIT 1',
+        [communityId]
+      );
+      const [cmRows] = await pool.query(
+        'SELECT community_role FROM community_members WHERE user_id = ? AND community_id = ? LIMIT 1',
+        [requestingUserId, communityId]
+      );
+      const isOwner = Array.isArray(communityRows) && communityRows.length > 0 &&
+        (communityRows[0] as any).owner_id === requestingUserId;
+      const isAdmin = Array.isArray(cmRows) && cmRows.length > 0 &&
+        (cmRows[0] as any).community_role === 'admin';
+      if (!isOwner && !isAdmin)
+        return res.status(403).json({ error: 'Not authorized to delete this post' });
+    }
+
+    await pool.query('DELETE FROM forum_posts WHERE id = ?', [postId]);
+    res.json({ success: true });
+  } catch (e) {
+    console.error('delete post error', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 // serve Vite build (connect to client)
 const distDir = path.join(process.cwd(), 'dist'); // Vite default outDir is "dist"

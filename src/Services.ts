@@ -455,6 +455,18 @@ export async function fetchUserShelves(userId: number): Promise<UserShelf[]> {
   return handleResponse(raw, res);
 }
 
+export async function updateUserShelf(shelfId: number, name: string, bookIds: number[]): Promise<void> {
+  const user = getCurrentUser();
+  if (!user) throw new Error('Must be logged in to update a shelf');
+  const res = await fetch(`${API_BASE}/api/shelves/${shelfId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: user.id, name, book_ids: bookIds }),
+  });
+  const raw = await res.text();
+  handleResponse(raw, res);
+}
+
 export async function createUserShelf(name: string, bookIds: number[]): Promise<UserShelf> {
   const user = getCurrentUser();
   if (!user) throw new Error('Must be logged in to create a shelf');
@@ -511,6 +523,93 @@ export async function joinCommunity(communityId: number): Promise<{
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_id: user.id }),
+  });
+  const raw = await res.text();
+  return handleResponse(raw, res);
+}
+
+// ---------- FRIENDS ----------
+
+export type FriendshipStatus = 'none' | 'pending_sent' | 'pending_received' | 'accepted';
+
+export type FriendshipInfo = {
+  status: FriendshipStatus;
+  requestId?: number;
+};
+
+export type FriendUser = {
+  id: number;
+  username: string;
+  avatarUrl: string | null;
+};
+
+export async function getFriendshipStatus(userId: number, otherUserId: number): Promise<FriendshipInfo> {
+  const res = await fetch(`${API_BASE}/api/friends/status?user_id=${userId}&other_user_id=${otherUserId}`);
+  const raw = await res.text();
+  return handleResponse(raw, res);
+}
+
+export async function sendFriendRequest(toUserId: number): Promise<{ success: boolean; id: number }> {
+  const user = getCurrentUser();
+  if (!user) throw new Error('Must be logged in to send a friend request');
+  const res = await fetch(`${API_BASE}/api/friends/request`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from_user_id: user.id, to_user_id: toUserId }),
+  });
+  const raw = await res.text();
+  return handleResponse(raw, res);
+}
+
+export async function getFriends(userId: number): Promise<FriendUser[]> {
+  const res = await fetch(`${API_BASE}/api/friends?user_id=${userId}`);
+  const raw = await res.text();
+  return handleResponse(raw, res) ?? [];
+}
+
+export async function respondToFriendRequest(requestId: number, status: 'accepted' | 'declined'): Promise<{ success: boolean }> {
+  const user = getCurrentUser();
+  if (!user) throw new Error('Must be logged in to respond to a friend request');
+  const res = await fetch(`${API_BASE}/api/friends/${requestId}/respond`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: user.id, status }),
+  });
+  const raw = await res.text();
+  return handleResponse(raw, res);
+}
+
+export async function removeFriend(friendId: number): Promise<{ success: boolean }> {
+  const user = getCurrentUser();
+  if (!user) throw new Error('Must be logged in to remove a friend');
+  const res = await fetch(`${API_BASE}/api/friends`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: user.id, friend_id: friendId }),
+  });
+  const raw = await res.text();
+  return handleResponse(raw, res);
+}
+
+export async function addCommunityMembers(communityId: number, userIds: number[]): Promise<{ success: boolean }> {
+  const user = getCurrentUser();
+  if (!user) throw new Error('Must be logged in to add members');
+  const res = await fetch(`${API_BASE}/api/communities/${communityId}/members/add`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_ids: userIds, requesting_user_id: user.id }),
+  });
+  const raw = await res.text();
+  return handleResponse(raw, res);
+}
+
+export async function deleteForumPost(threadId: number, postId: number): Promise<{ success: boolean }> {
+  const user = getCurrentUser();
+  if (!user) throw new Error('Must be logged in to delete a post');
+  const res = await fetch(`${API_BASE}/api/threads/${threadId}/posts/${postId}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requesting_user_id: user.id }),
   });
   const raw = await res.text();
   return handleResponse(raw, res);

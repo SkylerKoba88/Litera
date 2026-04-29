@@ -1,11 +1,6 @@
 -- Run these against your production database to create missing tables.
 -- All statements use IF NOT EXISTS so they are safe to re-run.
 
--- Add bio and interests columns to users (safe to re-run)
-ALTER TABLE litera.users ADD COLUMN IF NOT EXISTS bio VARCHAR(250) NULL;
-ALTER TABLE litera.users ADD COLUMN IF NOT EXISTS interests TEXT NULL;
-
-
 CREATE TABLE IF NOT EXISTS litera.user_favorites (
   id         INT          NOT NULL AUTO_INCREMENT,
   user_id    INT          NOT NULL,
@@ -76,4 +71,19 @@ CREATE TABLE IF NOT EXISTS litera.forum_posts (
   KEY idx_fp_thread (thread_id),
   CONSTRAINT fk_fp_thread FOREIGN KEY (thread_id) REFERENCES forum_threads (id) ON DELETE CASCADE,
   CONSTRAINT fk_fp_user   FOREIGN KEY (user_id)   REFERENCES users          (id) ON DELETE CASCADE
+);
+
+-- Friend request / friendship system
+CREATE TABLE IF NOT EXISTS litera.friendships (
+  id           INT       NOT NULL AUTO_INCREMENT,
+  requester_id INT       NOT NULL,
+  addressee_id INT       NOT NULL,
+  status       ENUM('pending', 'accepted', 'declined') NOT NULL DEFAULT 'pending',
+  created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_friendship (requester_id, addressee_id),
+  KEY idx_friendships_addressee (addressee_id),
+  CONSTRAINT fk_fr_requester FOREIGN KEY (requester_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_fr_addressee FOREIGN KEY (addressee_id) REFERENCES users (id) ON DELETE CASCADE
 );

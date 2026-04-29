@@ -11,7 +11,8 @@ import EditIcon from '../images/Edit.svg';
 import {
     getCurrentUser, fetchUserById, fetchCommunities, fetchBooks,
     fetchFavorites, addFavorite, removeFavorite,
-    type Community, type BookRecord
+    getFriendshipStatus, sendFriendRequest, respondToFriendRequest, removeFriend,
+    type Community, type BookRecord, type FriendshipStatus,
 } from "../Services";
 
 @customElement('profile-page')
@@ -23,6 +24,9 @@ export class ProfilePage extends LitElement {
     @state() private favoriteIds: Set<number> = new Set();
     @state() private loading = true;
     @state() private userData: any = null;
+    @state() private friendStatus: FriendshipStatus = 'none';
+    @state() private friendRequestId: number | null = null;
+    @state() private friendActionLoading = false;
 
     connectedCallback(): void {
         super.connectedCallback();
@@ -70,10 +74,84 @@ export class ProfilePage extends LitElement {
             this.communities = communities;
             this.books = books;
             this.favoriteIds = new Set(favorites);
+
+            if (!this.isOwnProfile && cur) {
+                const info = await getFriendshipStatus(cur.id, targetId);
+                this.friendStatus = info.status;
+                this.friendRequestId = info.requestId ?? null;
+            }
         } catch (e) {
             console.error('Failed to load profile data', e);
         } finally {
             this.loading = false;
+        }
+    }
+
+    private async handleAddFriend() {
+        const target = this.targetUserId;
+        if (!target || this.friendActionLoading) return;
+        this.friendActionLoading = true;
+        try {
+            const result = await sendFriendRequest(target);
+            this.friendStatus = 'pending_sent';
+            this.friendRequestId = result.id;
+        } catch (e) {
+            console.error('Failed to send friend request', e);
+        } finally {
+            this.friendActionLoading = false;
+        }
+    }
+
+    private async handleRespondRequest(status: 'accepted' | 'declined') {
+        if (!this.friendRequestId || this.friendActionLoading) return;
+        this.friendActionLoading = true;
+        try {
+            await respondToFriendRequest(this.friendRequestId, status);
+            this.friendStatus = status === 'accepted' ? 'accepted' : 'none';
+            if (status === 'declined') this.friendRequestId = null;
+        } catch (e) {
+            console.error('Failed to respond to friend request', e);
+        } finally {
+            this.friendActionLoading = false;
+        }
+    }
+
+    private async handleUnfriend() {
+        const target = this.targetUserId;
+        if (!target || this.friendActionLoading) return;
+        this.friendActionLoading = true;
+        try {
+            await removeFriend(target);
+            this.friendStatus = 'none';
+            this.friendRequestId = null;
+        } catch (e) {
+            console.error('Failed to unfriend', e);
+        } finally {
+            this.friendActionLoading = false;
+        }
+    }
+
+    private renderFriendButton() {
+        const loading = this.friendActionLoading;
+        switch (this.friendStatus) {
+            case 'none':
+                return html`<button class="friend-btn" ?disabled=${loading} @click=${this.handleAddFriend.bind(this)}>
+                    ${loading ? 'Sending…' : '+ Add Friend'}
+                </button>`;
+            case 'pending_sent':
+                return html`<button class="friend-btn friend-btn--pending" disabled>Request Sent</button>`;
+            case 'pending_received':
+                return html`
+                    <button class="friend-btn friend-btn--accept" ?disabled=${loading} @click=${() => this.handleRespondRequest('accepted')}>
+                        ${loading ? '…' : 'Accept'}
+                    </button>
+                    <button class="friend-btn friend-btn--decline" ?disabled=${loading} @click=${() => this.handleRespondRequest('declined')}>
+                        ${loading ? '…' : 'Decline'}
+                    </button>`;
+            case 'accepted':
+                return html`<button class="friend-btn friend-btn--friends" ?disabled=${loading} @click=${this.handleUnfriend.bind(this)}>
+                    ${loading ? '…' : '✓ Friends'}
+                </button>`;
         }
     }
 
@@ -211,6 +289,29 @@ export class ProfilePage extends LitElement {
                 max-width: 480px;
                 line-height: 1.5;
             }
+            .friend-actions {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                margin-top: 12px;
+            }
+            .friend-btn {
+                padding: 8px 18px;
+                border-radius: 8px;
+                border: none;
+                font-size: 0.9rem;
+                font-weight: 600;
+                cursor: pointer;
+                background: var(--color-5, #414833);
+                color: white;
+            }
+            .friend-btn:disabled { opacity: 0.55; cursor: default; }
+            .friend-btn:not(:disabled):hover { opacity: 0.8; }
+            .friend-btn--pending { background: #888; }
+            .friend-btn--accept { background: #a9bb72; color: #2d2a26; }
+            .friend-btn--decline { background: white; color: #c0392b; border: 1.5px solid #c0392b; }
+            .friend-btn--friends { background: white; color: var(--color-5, #414833); border: 1.5px solid var(--color-5, #414833); }
+            .friend-btn--friends:not(:disabled):hover { background: #ffeaea; border-color: #c0392b; color: #c0392b; }
         `;
 
         return html`
@@ -228,6 +329,9 @@ export class ProfilePage extends LitElement {
                         <h4>@${u.username ?? 'Unknown'}</h4>
                         <h5>${fullName || 'No name available'}</h5>
                         ${u.bio ? html`<p class="bio-text">${u.bio}</p>` : ''}
+                        ${!this.isOwnProfile && cur ? html`
+                            <div class="friend-actions">${this.renderFriendButton()}</div>
+                        ` : ''}
                     </div>
                 </div>
 

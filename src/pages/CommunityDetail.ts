@@ -1199,6 +1199,7 @@ export class CommunityDetailPage extends LitElement {
                     .threadId=${t.id}
                     .title=${t.title}
                     .postCount=${Number(t.post_count)}
+                    .isAdmin=${this.isAdmin()}
                   ></forum-thread>
                 `)}
               </div>

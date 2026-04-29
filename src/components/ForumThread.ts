@@ -1,12 +1,13 @@
 import { html, css, LitElement, type TemplateResult } from 'lit';
 import { customElement, state, property } from 'lit/decorators.js';
-import { fetchThreadPosts, createForumPost, getCurrentUser, type ForumPost } from '../Services.js';
+import { fetchThreadPosts, createForumPost, deleteForumPost, getCurrentUser, type ForumPost } from '../Services.js';
 
 @customElement('forum-thread')
 export class ForumThreadElement extends LitElement {
   @property({ type: Number }) threadId = 0;
   @property({ type: String }) title = '';
   @property({ type: Number }) postCount = 0;
+  @property({ type: Boolean }) isAdmin = false;
 
   @state() private open = false;
   @state() private posts: ForumPost[] = [];
@@ -169,6 +170,19 @@ export class ForumThreadElement extends LitElement {
       border-top: 1px solid #eee;
       background: #fff;
     }
+
+    .btn-delete-post {
+      background: none;
+      border: none;
+      color: #bbb;
+      font-size: 0.78rem;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 4px;
+      line-height: 1;
+    }
+    .btn-delete-post:hover { color: #c0392b; background: #ffeaea; }
   `;
 
   private async toggle() {
@@ -183,6 +197,16 @@ export class ForumThreadElement extends LitElement {
       } finally {
         this.loadingPosts = false;
       }
+    }
+  }
+
+  private async handleDeletePost(postId: number) {
+    try {
+      await deleteForumPost(this.threadId, postId);
+      this.posts = this.posts.filter(p => p.id !== postId);
+      this.postCount = Math.max(0, this.postCount - 1);
+    } catch (e) {
+      console.error('Failed to delete post', e);
     }
   }
 
@@ -202,6 +226,8 @@ export class ForumThreadElement extends LitElement {
   }
 
   private renderPost(p: ForumPost): TemplateResult {
+    const user = getCurrentUser();
+    const canDelete = this.isAdmin || user?.id === p.user_id;
     const date = new Date(p.created_at).toLocaleDateString(undefined, {
       month: 'short', day: 'numeric', year: 'numeric',
     });
@@ -214,6 +240,10 @@ export class ForumThreadElement extends LitElement {
             : html`<div class="post-avatar"></div>`}
           <span class="post-author" @click=${() => { window.location.hash = `/user/${p.user_id}`; }}>@${p.username}</span>
           <span class="post-time">${date}</span>
+          ${canDelete ? html`
+            <button class="btn-delete-post" title="Delete post"
+              @click=${(e: Event) => { e.stopPropagation(); this.handleDeletePost(p.id); }}>✕</button>
+          ` : ''}
         </div>
         <div class="post-content">${p.content}</div>
       </div>

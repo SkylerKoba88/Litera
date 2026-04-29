@@ -3,6 +3,7 @@ import '../components/PillButton.js';
 import '../components/ImagePicker.js';
 import { createCommunity, getCurrentUser, type Categories } from '../Services.js';
 import '../components/successAnimation.jsx';
+import '../components/AddMembersModal.js';
 import type { PillButton } from '../components/PillButton.ts';
 import { VALID_CATEGORIES, formatCategoryName } from '../constants.js';
 
@@ -134,6 +135,17 @@ export const CommunityCreationPage = ({
     autoBan: false,
   };
 
+  const showSuccess = () => {
+    const successAnim = document.createElement('success-animation');
+    successAnim.addEventListener('finished', () => {
+      window.location.href = '#/communities';
+    });
+    document.body.appendChild(successAnim);
+    customElements.whenDefined('success-animation').then(() => {
+      (successAnim as any).play();
+    });
+  };
+
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
 
@@ -152,7 +164,7 @@ export const CommunityCreationPage = ({
         return;
       }
 
-      await createCommunity({
+      const community = await createCommunity({
         name: nameValue || 'New Community',
         description: descriptionValue,
         categories,
@@ -163,17 +175,18 @@ export const CommunityCreationPage = ({
         ownerId: user.id
       });
 
-      const successAnim = document.createElement('success-animation');
-
-      successAnim.addEventListener('finished', () => {
-        window.location.href = '#/communities';
-      });
-
-      document.body.appendChild(successAnim);
-
-      await customElements.whenDefined('success-animation');
-
-      (successAnim as any).play();
+      if (visibilityValue === 'private' && community?.id) {
+        await customElements.whenDefined('add-members-modal');
+        const modal = document.createElement('add-members-modal') as any;
+        modal.communityId = community.id;
+        modal.addEventListener('done', () => {
+          document.body.removeChild(modal);
+          showSuccess();
+        });
+        document.body.appendChild(modal);
+      } else {
+        showSuccess();
+      }
 
     } catch(e) {
       console.error(e);
