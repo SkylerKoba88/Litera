@@ -507,3 +507,61 @@ export async function joinCommunity(communityId: number): Promise<{
   const raw = await res.text();
   return handleResponse(raw, res);
 }
+
+// ---------- FORUM ----------
+
+export type ForumThread = {
+  id: number;
+  community_id: number;
+  title: string;
+  created_by: number;
+  username: string;
+  created_at: string;
+  post_count: number;
+};
+
+export type ForumPost = {
+  id: number;
+  thread_id: number;
+  user_id: number;
+  username: string;
+  avatar_url: string | null;
+  content: string;
+  created_at: string;
+};
+
+export async function fetchCommunityThreads(communityId: number): Promise<ForumThread[]> {
+  const res = await fetch(`${API_BASE}/api/communities/${communityId}/threads`);
+  const raw = await res.text();
+  return handleResponse(raw, res) ?? [];
+}
+
+export async function createForumThread(communityId: number, title: string): Promise<ForumThread> {
+  const user = getCurrentUser();
+  if (!user) throw new Error('Must be logged in to create a thread');
+  const res = await fetch(`${API_BASE}/api/communities/${communityId}/threads`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, user_id: user.id }),
+  });
+  const raw = await res.text();
+  return handleResponse(raw, res);
+}
+
+export async function fetchThreadPosts(threadId: number): Promise<ForumPost[]> {
+  const res = await fetch(`${API_BASE}/api/threads/${threadId}/posts`);
+  const raw = await res.text();
+  return handleResponse(raw, res) ?? [];
+}
+
+export async function createForumPost(threadId: number, content: string): Promise<ForumPost> {
+  const user = getCurrentUser();
+  if (!user) throw new Error('Must be logged in to post');
+  const res = await fetch(`${API_BASE}/api/threads/${threadId}/posts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content, user_id: user.id }),
+  });
+  const raw = await res.text();
+  return handleResponse(raw, res);
+}

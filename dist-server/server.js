@@ -910,6 +910,89 @@ app.delete('/api/favorites', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+// ----------- FORUM ROUTES --------------
+app.get('/api/communities/:id/threads', async (req, res) => {
+    const communityId = Number(req.params.id);
+    if (!Number.isInteger(communityId) || communityId < 1)
+        return res.status(400).json({ error: 'Invalid community id' });
+    try {
+        const [rows] = await pool.query(`SELECT ft.id, ft.community_id, ft.title, ft.created_by, ft.created_at,
+              u.username, COUNT(fp.id) AS post_count
+       FROM forum_threads ft
+       JOIN users u ON u.id = ft.created_by
+       LEFT JOIN forum_posts fp ON fp.thread_id = ft.id
+       WHERE ft.community_id = ?
+       GROUP BY ft.id
+       ORDER BY ft.created_at DESC`, [communityId]);
+        res.json(Array.isArray(rows) ? rows : []);
+    }
+    catch (e) {
+        console.error('fetch threads error', e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+app.post('/api/communities/:id/threads', async (req, res) => {
+    const communityId = Number(req.params.id);
+    if (!Number.isInteger(communityId) || communityId < 1)
+        return res.status(400).json({ error: 'Invalid community id' });
+    const title = typeof (req.body || {}).title === 'string' ? req.body.title.trim() : '';
+    const userId = Number((req.body || {}).user_id);
+    if (!title)
+        return res.status(400).json({ error: 'title is required' });
+    if (!Number.isInteger(userId) || userId < 1)
+        return res.status(400).json({ error: 'valid user_id required' });
+    try {
+        const [result] = await pool.query('INSERT INTO forum_threads (community_id, title, created_by) VALUES (?, ?, ?)', [communityId, title, userId]);
+        const [rows] = await pool.query(`SELECT ft.id, ft.community_id, ft.title, ft.created_by, ft.created_at,
+              u.username, 0 AS post_count
+       FROM forum_threads ft JOIN users u ON u.id = ft.created_by WHERE ft.id = ?`, [result.insertId]);
+        res.status(201).json(rows[0]);
+    }
+    catch (e) {
+        console.error('create thread error', e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+app.get('/api/threads/:id/posts', async (req, res) => {
+    const threadId = Number(req.params.id);
+    if (!Number.isInteger(threadId) || threadId < 1)
+        return res.status(400).json({ error: 'Invalid thread id' });
+    try {
+        const [rows] = await pool.query(`SELECT fp.id, fp.thread_id, fp.user_id, fp.content, fp.created_at,
+              u.username, u.avatar_url
+       FROM forum_posts fp
+       JOIN users u ON u.id = fp.user_id
+       WHERE fp.thread_id = ?
+       ORDER BY fp.created_at ASC`, [threadId]);
+        res.json(Array.isArray(rows) ? rows : []);
+    }
+    catch (e) {
+        console.error('fetch posts error', e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+app.post('/api/threads/:id/posts', async (req, res) => {
+    const threadId = Number(req.params.id);
+    if (!Number.isInteger(threadId) || threadId < 1)
+        return res.status(400).json({ error: 'Invalid thread id' });
+    const content = typeof (req.body || {}).content === 'string' ? req.body.content.trim() : '';
+    const userId = Number((req.body || {}).user_id);
+    if (!content)
+        return res.status(400).json({ error: 'content is required' });
+    if (!Number.isInteger(userId) || userId < 1)
+        return res.status(400).json({ error: 'valid user_id required' });
+    try {
+        const [result] = await pool.query('INSERT INTO forum_posts (thread_id, user_id, content) VALUES (?, ?, ?)', [threadId, userId, content]);
+        const [rows] = await pool.query(`SELECT fp.id, fp.thread_id, fp.user_id, fp.content, fp.created_at,
+              u.username, u.avatar_url
+       FROM forum_posts fp JOIN users u ON u.id = fp.user_id WHERE fp.id = ?`, [result.insertId]);
+        res.status(201).json(rows[0]);
+    }
+    catch (e) {
+        console.error('create post error', e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 // google meet creation route
 app.post("/api/meet/create", async (req, res) => {
     try {

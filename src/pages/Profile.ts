@@ -103,7 +103,6 @@ export class ProfilePage extends LitElement {
         const styles = css`
             :host{
                 display: block;
-                background-color: var(--color-3);
             }
             
             #card {
@@ -115,7 +114,8 @@ export class ProfilePage extends LitElement {
                 background-color: white;
                 border-bottom: 1px solid #ccc;
                 border-radius: 8px;
-                padding: 16px;
+                padding: 24px 48px;
+                box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
                 gap: 24px;
                 margin-bottom: 16px;
             }
@@ -134,11 +134,16 @@ export class ProfilePage extends LitElement {
             }
             .lists {
                 flex-direction: column;
+                gap: 16px;
+            }
+            h4 {
+                margin: 0;
             }
             img#profileImg {
-                max-width: 100px;
+                width: 100px;
                 height: 100px;
                 border-radius: 100%;
+                object-fit: cover;
             }
             #card button {
                 background: #a9bb72;

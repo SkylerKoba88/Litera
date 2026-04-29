@@ -268,7 +268,9 @@ class NavBar extends LitElement {
                                 }}
                                 aria-current=${this._isActive(link.path) ? 'page' : 'false'}
                             >
-                                <img src=${link.icon} alt=${link.name} style="width: 20px; height: 20px; margin-right: 8px;">
+                                ${link.name === 'profile' && this.user?.avatarUrl
+                                    ? html`<img src=${this.user.avatarUrl} alt="avatar" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; margin-right: 8px; border: 2px solid rgba(255,255,255,0.6); filter: none;">`
+                                    : html`<img src=${link.icon} alt=${link.name} style="width: 20px; height: 20px; margin-right: 8px;">`}
                                 ${link.name === 'profile' && !this.user ? 'login' : link.name}
                             </button>
 
@@ -281,7 +283,6 @@ class NavBar extends LitElement {
                             
                         `
                     )}
-                    ${this.user ? html `<img src="${this.user.avatarUrl ?? ProfileIcon}" alt="User Avatar" style="width: 40px; height: 40px; border-radius: 50%;">`: null}
                 </div>
             </nav>
         `

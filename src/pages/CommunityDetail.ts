@@ -1,10 +1,12 @@
 import { html, css, LitElement, type TemplateResult } from 'lit';
 import { ifDefined } from 'lit/directives/if-defined.js';
-import { customElement, state, property } from 'lit/decorators.js';
+import { customElement, state, property, query } from 'lit/decorators.js';
 import '../components/SearchBar.jsx';
 import '../components/CommunityCard.jsx';
 import '../components/CommunityContainer.jsx';
 import '../components/JoinButton.jsx';
+import '../components/successAnimation.jsx';
+import '../components/ForumThread.js';
 import {
   getCommunityById,
   getMembership,
@@ -18,15 +20,27 @@ import {
   finishCurrentBook,
   fetchBooks,
   createBook,
+  fetchCommunityThreads,
+  createForumThread,
   type Community,
   type MembershipStatus,
   type CommunityBooks,
   type BookRecord,
+  type ForumThread,
 } from '../Services.js';
+
+const SCHEMES: Record<string, { deep: string; mid: string; light: string; textLight: string; textDark: string }> = {
+  default: { deep: '#414833', mid: '#646d4a', light: '#ece0d5', textLight: '#fbfff4', textDark: '#2d2a26' },
+  dark:    { deep: '#1c1c1e', mid: '#3a3a3c', light: '#d1d1d6', textLight: '#f5f5f7', textDark: '#1c1c1e' },
+  ocean:   { deep: '#0d2137', mid: '#1a4a6e', light: '#cde8f5', textLight: '#e8f4fd', textDark: '#0d2137' },
+  forest:  { deep: '#1e3a2f', mid: '#2d6a4f', light: '#d8f3dc', textLight: '#f0fdf4', textDark: '#1e3a2f' },
+  sunset:  { deep: '#4a1942', mid: '#a0522d', light: '#fde8e0', textLight: '#fdf4f0', textDark: '#3d1a18' },
+};
 
 @customElement('community-detail-page')
 export class CommunityDetailPage extends LitElement {
   @property({ type: Number }) communityId = 0;
+  @query('success-animation') private successAnim!: any;
 
   @state() private community: Community | null = null;
   @state() private membership: MembershipStatus = { isMember: false, role: null };
@@ -49,6 +63,12 @@ export class CommunityDetailPage extends LitElement {
   @state() private addingBook = false;
   @state() private addBookError = '';
 
+  // Forum state
+  @state() private threads: ForumThread[] = [];
+  @state() private newThreadTitle = '';
+  @state() private showNewThread = false;
+  @state() private creatingThread = false;
+
   // Edit form values — set in openEdit() before editMode toggles to true
   private editName = '';
   private editDescription = '';
@@ -59,20 +79,17 @@ export class CommunityDetailPage extends LitElement {
   static styles = css`
     :host {
       display: block;
-      min-height: 100vh;
-      height: 100%;
-      background: var(--color-5);
+      background: var(--cs-deep, #414833);
       color: var(--color-text-dark);
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     }
 
-    * {
-      box-sizing: border-box;
+    br {
+      height: 48px;
     }
-
     .page {
-      max-width: 1080px;
-      margin: 40px auto 64px;
+      justify-self: center;
+      max-width: 85%;
       background: #f7f5f1;
       border-radius: 10px;
       overflow: hidden;
@@ -90,7 +107,7 @@ export class CommunityDetailPage extends LitElement {
       display: block;
       width: 100%;
       height: 420px;
-      background: linear-gradient(135deg, var(--color-4), var(--color-5));
+      background: linear-gradient(135deg, var(--cs-mid, #646d4a), var(--cs-deep, #414833));
     }
 
     .content {
@@ -141,10 +158,10 @@ export class CommunityDetailPage extends LitElement {
       display: grid;
       grid-template-columns: 120px 1fr;
       gap: 18px;
-      background: linear-gradient(90deg, #252c24, #1e2520);
+      background: linear-gradient(90deg, var(--cs-deep, #252c24), var(--cs-mid, #1e2520));
       border-radius: 10px;
       overflow: hidden;
-      color: white;
+      color: var(--cs-text-light, white);
       min-height: 150px;
       max-width: 460px;
     }
@@ -201,6 +218,7 @@ export class CommunityDetailPage extends LitElement {
       border-radius: 999px;
       background: #d9d9d9;
       flex-shrink: 0;
+      object-fit: cover;
     }
 
     .previous-reads {
@@ -242,7 +260,7 @@ export class CommunityDetailPage extends LitElement {
     }
 
     .meeting-card {
-      border: 2px solid #72785f;
+      border: 2px solid var(--cs-mid, #646d4a);
       background: white;
       min-height: 180px;
       display: flex;
@@ -251,8 +269,8 @@ export class CommunityDetailPage extends LitElement {
     }
 
     .meeting-head {
-      background: var(--color-4);
-      color: white;
+      background: var(--cs-mid, #646d4a);
+      color: var(--cs-text-light, white);
       padding: 10px 12px;
       display: flex;
       justify-content: space-between;
@@ -278,8 +296,8 @@ export class CommunityDetailPage extends LitElement {
 
     .meeting-button {
       align-self: center;
-      background: #8f005f;
-      color: white;
+      background: var(--cs-mid, #646d4a);
+      color: var(--cs-text-light, white);
       border: none;
       border-radius: 8px;
       padding: 10px 22px;
@@ -287,31 +305,63 @@ export class CommunityDetailPage extends LitElement {
       cursor: pointer;
     }
 
-    .chat {
+    .forum {
       margin-top: 58px;
     }
 
-    .chat-list {
-      margin-top: 14px;
+    .forum-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .forum-list {
       border: 1px solid #c9c9c9;
       border-bottom: none;
+      border-radius: 4px 4px 0 0;
+      overflow: hidden;
     }
 
-    .chat-row {
+    .forum-empty {
+      padding: 24px;
+      text-align: center;
+      color: #999;
+      font-style: italic;
+      font-size: 0.9rem;
+      background: #fafafa;
+      border: 1px solid #c9c9c9;
+    }
+
+    .btn-new-thread {
+      background: var(--cs-mid, #646d4a);
+      color: var(--cs-text-light, #fbfff4);
+      border: none;
+      border-radius: 8px;
+      padding: 8px 18px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-new-thread:hover { opacity: 0.85; }
+
+    .new-thread-form {
       display: flex;
-      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
       align-items: center;
-      background: #e7e7e7;
-      border-bottom: 1px solid #9f9f9f;
-      padding: 18px 20px;
-      font-size: 1rem;
-      font-weight: 700;
     }
 
-    .chevron {
-      font-size: 1rem;
-      color: #333;
+    .new-thread-form input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: inherit;
     }
+    .new-thread-form input:focus { outline: none; border-color: var(--cs-mid, #646d4a); }
 
     /* Action button */
     .action-btn {
@@ -325,9 +375,9 @@ export class CommunityDetailPage extends LitElement {
       flex-shrink: 0;
     }
 
-    .btn-join { background: var(--color-4); color: white; }
-    .btn-leave { background: white; color: var(--color-4); border: 2px solid var(--color-4); }
-    .btn-edit { background: var(--color-5); color: white; }
+    .btn-join { background: var(--cs-mid, #646d4a); color: var(--cs-text-light, white); }
+    .btn-leave { background: white; color: var(--cs-mid, #646d4a); border: 2px solid var(--cs-mid, #646d4a); }
+    .btn-edit { background: var(--cs-deep, #414833); color: var(--cs-text-light, white); }
     .action-btn:hover { opacity: 0.85; }
 
     /* Modals */
@@ -381,8 +431,8 @@ export class CommunityDetailPage extends LitElement {
     }
 
     .btn-save {
-      background: var(--color-4);
-      color: white;
+      background: var(--cs-mid, #646d4a);
+      color: var(--cs-text-light, white);
       padding: 10px 24px;
       border-radius: 8px;
       border: none;
@@ -432,8 +482,8 @@ export class CommunityDetailPage extends LitElement {
     }
 
     .btn-set-book {
-      background: var(--color-4);
-      color: white;
+      background: var(--cs-mid, #646d4a);
+      color: var(--cs-text-light, white);
       border: none;
       border-radius: 8px;
       padding: 8px 16px;
@@ -444,8 +494,8 @@ export class CommunityDetailPage extends LitElement {
     .btn-set-book:hover { opacity: 0.85; }
 
     .btn-finish-book {
-      background: #8f005f;
-      color: white;
+      background: var(--cs-mid, #646d4a);
+      color: var(--cs-text-light, white);
       border: none;
       border-radius: 8px;
       padding: 8px 16px;
@@ -523,8 +573,8 @@ export class CommunityDetailPage extends LitElement {
     .empty-search p { margin: 0 0 12px; font-size: 0.9rem; }
 
     .btn-add-book {
-      background: var(--color-4);
-      color: white;
+      background: var(--cs-mid, #646d4a);
+      color: var(--cs-text-light, white);
       border: none;
       border-radius: 8px;
       padding: 9px 20px;
@@ -617,6 +667,16 @@ export class CommunityDetailPage extends LitElement {
 
   updated(changedProps: Map<string, unknown>) {
     if (changedProps.has('communityId')) this.load();
+    this._applyScheme();
+  }
+
+  private _applyScheme() {
+    const s = SCHEMES[this.community?.colorScheme ?? 'default'] ?? SCHEMES['default'];
+    this.style.setProperty('--cs-deep', s.deep);
+    this.style.setProperty('--cs-mid', s.mid);
+    this.style.setProperty('--cs-light', s.light);
+    this.style.setProperty('--cs-text-light', s.textLight);
+    this.style.setProperty('--cs-text-dark', s.textDark);
   }
 
   private async load() {
@@ -635,6 +695,26 @@ export class CommunityDetailPage extends LitElement {
       console.error('Failed to load community', e);
     } finally {
       this.loading = false;
+    }
+    try {
+      this.threads = await fetchCommunityThreads(this.communityId);
+    } catch (e) {
+      console.warn('Forum threads unavailable (table may not exist yet)', e);
+    }
+  }
+
+  private async handleCreateThread() {
+    if (!this.newThreadTitle.trim() || !this.community) return;
+    this.creatingThread = true;
+    try {
+      const thread = await createForumThread(this.community.id, this.newThreadTitle.trim());
+      this.threads = [thread, ...this.threads];
+      this.newThreadTitle = '';
+      this.showNewThread = false;
+    } catch (e) {
+      console.error('Failed to create thread', e);
+    } finally {
+      this.creatingThread = false;
     }
   }
 
@@ -676,7 +756,7 @@ export class CommunityDetailPage extends LitElement {
       this.allBooks = [...this.allBooks, newBook];
       this.selectedBookId = newBook.id;
       this.showAddBookForm = false;
-      this.bookSearchQuery = '';
+      this.bookSearchQuery = newBook.title;
     } catch (e) {
       this.addBookError = e instanceof Error ? e.message : 'Failed to add book.';
     } finally {
@@ -704,6 +784,8 @@ export class CommunityDetailPage extends LitElement {
       await setCommunityCurrentBook(this.community.id, this.selectedBookId);
       this.communityBooks = await fetchCommunityBooks(this.community.id);
       this.showBookPicker = false;
+      await this.updateComplete;
+      this.successAnim?.play();
     } catch (e) {
       console.error('Failed to set current book', e);
     } finally {
@@ -972,10 +1054,12 @@ export class CommunityDetailPage extends LitElement {
     const c = this.community;
 
     return html`
+      <success-animation></success-animation>
       ${this.editMode ? this.renderEditModal() : null}
       ${this.showDeleteConfirm ? this.renderDeleteConfirm() : null}
       ${this.showBookPicker ? this.renderBookPickerModal() : null}
 
+      <br>
       <main class="page">
         <section class="hero">
           ${c.thumbnailUrl
@@ -1077,25 +1161,54 @@ export class CommunityDetailPage extends LitElement {
             </div>
           </section>
 
-          <section class="chat">
-            <h2 class="section-title">Chat</h2>
-            <div class="chat-list">
-              ${[
-                "#Chapter 1 Discussion",
-                "#Chapter 2 Discussion",
-                "#Chapter 3 Discussion",
-              ].map(
-                (channel) => html`
-                  <div class="chat-row">
-                    <span>${channel}</span>
-                    <span class="chevron">˅</span>
-                  </div>
-                `
-              )}
+          <section class="forum">
+            <div class="forum-header">
+              <h2 class="section-title" style="margin:0;">Discussions</h2>
+              ${getCurrentUser() ? html`
+                <button class="btn-new-thread" @click=${() => { this.showNewThread = !this.showNewThread; }}>
+                  + New Thread
+                </button>
+              ` : null}
             </div>
+
+            ${this.showNewThread ? html`
+              <div class="new-thread-form">
+                <input
+                  type="text"
+                  placeholder="Thread title…"
+                  .value=${this.newThreadTitle}
+                  @input=${(e: Event) => { this.newThreadTitle = (e.target as HTMLInputElement).value; }}
+                  @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter') this.handleCreateThread(); }}
+                />
+                <button
+                  class="btn-new-thread"
+                  ?disabled=${!this.newThreadTitle.trim() || this.creatingThread}
+                  @click=${this.handleCreateThread.bind(this)}
+                >${this.creatingThread ? 'Creating…' : 'Create'}</button>
+                <button
+                  class="btn-cancel"
+                  @click=${() => { this.showNewThread = false; this.newThreadTitle = ''; }}
+                >Cancel</button>
+              </div>
+            ` : null}
+
+            ${this.threads.length ? html`
+              <div class="forum-list">
+                ${this.threads.map(t => html`
+                  <forum-thread
+                    .threadId=${t.id}
+                    .title=${t.title}
+                    .postCount=${Number(t.post_count)}
+                  ></forum-thread>
+                `)}
+              </div>
+            ` : html`
+              <div class="forum-empty">No discussions yet — start one!</div>
+            `}
           </section>
         </section>
       </main>
+      <br>
     `;
   }
 }

@@ -174,7 +174,6 @@ export const ProfileEditPage = ({ currentPath = '/profile/edit' }: ProfileEditPr
     const styles = css`
         :host{
             display: block;
-            background-color: var(--color-3);
         }
         #card {
             margin: 48px;
@@ -184,6 +183,7 @@ export const ProfileEditPage = ({ currentPath = '/profile/edit' }: ProfileEditPr
             display: flex;
             background-color: white;
             border-bottom: 1px solid #ccc;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
             border-radius: 8px;
             padding: 16px;
             gap: 24px;
@@ -203,7 +203,11 @@ export const ProfileEditPage = ({ currentPath = '/profile/edit' }: ProfileEditPr
             font-size: 0.8em;
         }
         .lists {
-            flex-direction: column;
+          flex-direction: column;
+          gap: 16px;
+        }
+        h4 {
+            margin: 0;
         }
         image-picker {
             --color-4: #a9bb72;
@@ -223,7 +227,8 @@ export const ProfileEditPage = ({ currentPath = '/profile/edit' }: ProfileEditPr
 
     return html`
       <style>${styles}</style>
-      <button @click=${() => window.location.hash = '/profile'}>&larr; Back</button>
+      <button style="margin: 16px 24px; background: transparent; color: var(--color-5); border: none; font-size: 1rem; cursor: pointer; padding: 6px 0;"
+        @click=${() => window.location.hash = '/profile'}>&larr; Back</button>
       <div id="card">
         <div class="banner">
           <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
@@ -244,7 +249,6 @@ export const ProfileEditPage = ({ currentPath = '/profile/edit' }: ProfileEditPr
         </div>
        
       </div>
-      <p>${currentPath}</p>
     `;
 };
 

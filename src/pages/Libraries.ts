@@ -1,9 +1,10 @@
 import { html, css, type TemplateResult, LitElement } from "lit";
-import { customElement, state } from "lit/decorators.js";
+import { customElement, state, query } from "lit/decorators.js";
 import '../components/SearchBar.jsx';
 import '../components/CommunityContainer.jsx';
 import '../components/BookCard.jsx';
 import '../components/Breadcrumb.jsx';
+import '../components/successAnimation.jsx';
 import {
     getCurrentUser,
     fetchBooks,
@@ -21,6 +22,8 @@ import {
 
 @customElement('libraries-page')
 export class LibrariesPage extends LitElement {
+    @query('success-animation') private successAnim!: any;
+
     @state() private books: BookRecord[] = [];
     @state() private popularBooks: BookRecord[] = [];
     @state() private favoriteIds: Set<number> = new Set();
@@ -403,6 +406,8 @@ export class LibrariesPage extends LitElement {
             shelf.books = this.books.filter(b => this.shelfSelectedIds.has(b.id));
             this.userShelves = [...this.userShelves, shelf];
             this.showShelfCreator = false;
+            await this.updateComplete;
+            this.successAnim?.play();
         } catch (e) {
             this.shelfError = e instanceof Error ? e.message : 'Failed to create shelf.';
         } finally {
@@ -509,6 +514,7 @@ export class LibrariesPage extends LitElement {
         return html`
             ${this.showShelfCreator ? this.renderShelfCreatorModal() : null}
 
+            <success-animation></success-animation>
             <bread-crumb></bread-crumb>
 
             <div class="banner">

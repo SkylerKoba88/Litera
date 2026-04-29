@@ -48,3 +48,27 @@ CREATE TABLE IF NOT EXISTS litera.community_books (
   CONSTRAINT fk_cb_community FOREIGN KEY (community_id) REFERENCES communities (id) ON DELETE CASCADE,
   CONSTRAINT fk_cb_book      FOREIGN KEY (book_id)      REFERENCES books        (id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS litera.forum_threads (
+  id           INT          NOT NULL AUTO_INCREMENT,
+  community_id INT          NOT NULL,
+  title        VARCHAR(255) NOT NULL,
+  created_by   INT          NOT NULL,
+  created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_ft_community (community_id),
+  CONSTRAINT fk_ft_community FOREIGN KEY (community_id) REFERENCES communities (id) ON DELETE CASCADE,
+  CONSTRAINT fk_ft_user      FOREIGN KEY (created_by)   REFERENCES users        (id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS litera.forum_posts (
+  id         INT          NOT NULL AUTO_INCREMENT,
+  thread_id  INT          NOT NULL,
+  user_id    INT          NOT NULL,
+  content    TEXT         NOT NULL,
+  created_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_fp_thread (thread_id),
+  CONSTRAINT fk_fp_thread FOREIGN KEY (thread_id) REFERENCES forum_threads (id) ON DELETE CASCADE,
+  CONSTRAINT fk_fp_user   FOREIGN KEY (user_id)   REFERENCES users          (id) ON DELETE CASCADE
+);

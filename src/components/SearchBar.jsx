@@ -35,6 +35,7 @@ class SearchBar extends LitElement {
         width: 100%;
         align-items: center;
         justify-content: space-between;
+        box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.2);
     }
 
     .search-input {
