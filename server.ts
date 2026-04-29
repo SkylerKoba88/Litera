@@ -875,6 +875,31 @@ app.delete('/api/favorites', async (req, res) => {
   }
 });
 
+// google meet creation route
+
+app.post("/api/meet/create", async (req, res) => {
+  try {
+    const { title, startDateTime, endDateTime } = req.body || {};
+
+    res.json({
+      success: true,
+      eventId: "demo-event-123",
+      htmlLink: null,
+      meetLink: "https://meet.google.com/",
+      conferenceData: {
+        title,
+        startDateTime,
+        endDateTime,
+        mode: "temporary-demo",
+      },
+    });
+  } catch (error) {
+    console.error("temporary meet route error", error);
+    res.status(500).json({ error: "Failed to create demo meeting" });
+  }
+});
+
+
 // serve Vite build (connect to client)
 const distDir = path.join(process.cwd(), 'dist'); // Vite default outDir is "dist"
 app.use(express.static(distDir));
@@ -889,5 +914,6 @@ if (process.env.NODE_ENV !== 'test') {
     console.log(`Server listening on ${process.env.PORT || 3002}`);
   });
 }
+
 
 export default app;
