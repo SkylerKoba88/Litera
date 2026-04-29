@@ -29,6 +29,7 @@ export class ProfilePage extends LitElement {
     @state() private friendRequestId: number | null = null;
     @state() private friendActionLoading = false;
     @state() private pendingRequests: PendingFriendRequest[] = [];
+    @state() private showUnfriendConfirm = false;
 
     connectedCallback(): void {
         super.connectedCallback();
@@ -78,7 +79,11 @@ export class ProfilePage extends LitElement {
             this.favoriteIds = new Set(favorites);
 
             if (this.isOwnProfile && cur) {
-                this.pendingRequests = await getPendingFriendRequests(cur.id);
+                try {
+                    this.pendingRequests = await getPendingFriendRequests(cur.id);
+                } catch (e) {
+                    console.error('Failed to load pending friend requests', e);
+                }
             } else if (!this.isOwnProfile && cur) {
                 const info = await getFriendshipStatus(cur.id, targetId);
                 this.friendStatus = info.status;
@@ -162,7 +167,7 @@ export class ProfilePage extends LitElement {
                         ${loading ? '…' : 'Decline'}
                     </button>`;
             case 'accepted':
-                return html`<button class="friend-btn friend-btn--friends" ?disabled=${loading} @click=${this.handleUnfriend.bind(this)}>
+                return html`<button class="friend-btn friend-btn--friends" ?disabled=${loading} @click=${() => this.showUnfriendConfirm = true}>
                     ${loading ? '…' : '✓ Friends'}
                 </button>`;
         }
@@ -322,9 +327,39 @@ export class ProfilePage extends LitElement {
             .friend-btn:not(:disabled):hover { opacity: 0.8; }
             .friend-btn--pending { background: #888; }
             .friend-btn--accept { background: #a9bb72; color: #2d2a26; }
-            .friend-btn--decline { background: white; color: #c0392b; border: 1.5px solid #c0392b; }
+            .friend-btn--decline { background: transparent; color: #7b5494; border: 1.5px solid #7b5494; }
+            .friend-btn--decline:not(:disabled):hover { background: rgba(123,84,148,0.08); }
             .friend-btn--friends { background: white; color: var(--color-5, #414833); border: 1.5px solid var(--color-5, #414833); }
-            .friend-btn--friends:not(:disabled):hover { background: #ffeaea; border-color: #c0392b; color: #c0392b; }
+            .friend-btn--friends:not(:disabled):hover { background: transparent; border-color: #7b5494; color: #7b5494; }
+
+            .confirm-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.4);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+            }
+            .confirm-dialog {
+                background: white;
+                border-radius: 12px;
+                padding: 28px 32px;
+                max-width: 300px;
+                width: 90%;
+                text-align: center;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            }
+            .confirm-dialog p {
+                margin: 0 0 20px;
+                font-size: 1rem;
+                color: #333;
+            }
+            .confirm-actions {
+                display: flex;
+                gap: 12px;
+                justify-content: center;
+            }
 
             .pending-requests {
                 background: white;
@@ -364,6 +399,17 @@ export class ProfilePage extends LitElement {
 
         return html`
             <style>${styles}</style>
+            ${this.showUnfriendConfirm ? html`
+                <div class="confirm-overlay" @click=${(e: Event) => { if (e.target === e.currentTarget) this.showUnfriendConfirm = false; }}>
+                    <div class="confirm-dialog">
+                        <p>Remove <strong>@${u.username}</strong> as a friend?</p>
+                        <div class="confirm-actions">
+                            <button class="friend-btn friend-btn--friends" @click=${() => this.showUnfriendConfirm = false}>Cancel</button>
+                            <button class="friend-btn friend-btn--decline" @click=${() => { this.showUnfriendConfirm = false; this.handleUnfriend(); }}>Unfriend</button>
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
             ${this.isOwnProfile ? html`<bread-crumb></bread-crumb>` : html`
                 <button style="margin: 16px 24px; background: transparent; color: var(--color-5); border: none; font-size: 1rem; cursor: pointer; padding: 6px 0;"
                     @click=${() => history.back()}>&larr; Back</button>

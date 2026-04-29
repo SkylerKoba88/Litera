@@ -67,7 +67,7 @@ export const ProfileEditPage = (_props: ProfileEditProps): TemplateResult => {
       username: '', firstname: '', lastname: '', dob: '', email: '', bio: ''
     };
 
-    let profileImgUrl = '';
+    let profileImgUrl = '';           // updated by image-picker; initialized once user data loads
     let selectedInterests: string[] = [];
 
     const onImageChanged = (e: CustomEvent) => {
@@ -150,9 +150,23 @@ export const ProfileEditPage = (_props: ProfileEditProps): TemplateResult => {
       }
     };
 
+    const imagePickerTemplate = until(
+        userPromise.then(user => {
+            const avatarUrl = user.avatarUrl || user.avatar_url || '';
+            if (avatarUrl && !profileImgUrl) profileImgUrl = avatarUrl;
+            return html`
+                <image-picker
+                    .value=${avatarUrl}
+                    style="width:160px; display:block;"
+                    @image-changed=${onImageChanged}
+                ></image-picker>
+            `;
+        }),
+        html`<image-picker style="width:160px; display:block;" @image-changed=${onImageChanged}></image-picker>`
+    );
+
     const bannerTemplate = until(
         userPromise.then(user => {
-            const userId = Number(user.id);
             formData.username = formData.username || user.username || '';
             formData.bio = formData.bio || user.bio || '';
             const fullName = user.full_name ?? `${user.firstname ?? ''} ${user.lastname ?? ''}`.trim();
@@ -352,11 +366,7 @@ export const ProfileEditPage = (_props: ProfileEditProps): TemplateResult => {
       <div id="card">
         <div class="banner">
           <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
-            <image-picker
-              value="https://t3.ftcdn.net/jpg/02/22/85/16/360_F_222851624_jfoMGbJxwRi5AWGdPgXKSABMnzCQo9RN.jpg"
-              style="width:160px; display:block;"
-              @image-changed=${onImageChanged}
-            ></image-picker>
+            ${imagePickerTemplate}
           </div>
           ${bannerTemplate}
         </div>

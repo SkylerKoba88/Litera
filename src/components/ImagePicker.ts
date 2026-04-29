@@ -15,7 +15,13 @@ export class ImagePicker extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.preview = this.value;
+    if (this.value) this.preview = this.value;
+  }
+
+  updated(changedProperties: Map<string, unknown>) {
+    if (changedProperties.has('value') && this.value && !this.preview) {
+      this.preview = this.value;
+    }
   }
 
   static styles = css`

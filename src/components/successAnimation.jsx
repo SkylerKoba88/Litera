@@ -227,7 +227,7 @@ class SuccessAnimation extends LitElement {
             bubbles: true,
             composed: true
         }));
-    }, 5000);
+    }, 3000);
   };
 
   async play() {
