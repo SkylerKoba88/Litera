@@ -12,7 +12,8 @@ import {
     getCurrentUser, fetchUserById, fetchCommunities, fetchBooks,
     fetchFavorites, addFavorite, removeFavorite,
     getFriendshipStatus, sendFriendRequest, respondToFriendRequest, removeFriend,
-    type Community, type BookRecord, type FriendshipStatus,
+    getPendingFriendRequests,
+    type Community, type BookRecord, type FriendshipStatus, type PendingFriendRequest,
 } from "../Services";
 
 @customElement('profile-page')
@@ -27,6 +28,7 @@ export class ProfilePage extends LitElement {
     @state() private friendStatus: FriendshipStatus = 'none';
     @state() private friendRequestId: number | null = null;
     @state() private friendActionLoading = false;
+    @state() private pendingRequests: PendingFriendRequest[] = [];
 
     connectedCallback(): void {
         super.connectedCallback();
@@ -75,7 +77,9 @@ export class ProfilePage extends LitElement {
             this.books = books;
             this.favoriteIds = new Set(favorites);
 
-            if (!this.isOwnProfile && cur) {
+            if (this.isOwnProfile && cur) {
+                this.pendingRequests = await getPendingFriendRequests(cur.id);
+            } else if (!this.isOwnProfile && cur) {
                 const info = await getFriendshipStatus(cur.id, targetId);
                 this.friendStatus = info.status;
                 this.friendRequestId = info.requestId ?? null;
@@ -128,6 +132,15 @@ export class ProfilePage extends LitElement {
             console.error('Failed to unfriend', e);
         } finally {
             this.friendActionLoading = false;
+        }
+    }
+
+    private async handleRespondPending(requestId: number, status: 'accepted' | 'declined') {
+        try {
+            await respondToFriendRequest(requestId, status);
+            this.pendingRequests = this.pendingRequests.filter(r => r.requestId !== requestId);
+        } catch (e) {
+            console.error('Failed to respond to friend request', e);
         }
     }
 
@@ -312,6 +325,41 @@ export class ProfilePage extends LitElement {
             .friend-btn--decline { background: white; color: #c0392b; border: 1.5px solid #c0392b; }
             .friend-btn--friends { background: white; color: var(--color-5, #414833); border: 1.5px solid var(--color-5, #414833); }
             .friend-btn--friends:not(:disabled):hover { background: #ffeaea; border-color: #c0392b; color: #c0392b; }
+
+            .pending-requests {
+                background: white;
+                border-radius: 8px;
+                padding: 20px 48px;
+                box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+                margin-bottom: 16px;
+            }
+            .pending-requests h4 {
+                margin: 0 0 12px;
+            }
+            .pending-request-row {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 0;
+                border-bottom: 1px solid #eee;
+            }
+            .pending-request-row:last-child { border-bottom: none; }
+            .pending-avatar {
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                object-fit: cover;
+                flex-shrink: 0;
+            }
+            .pending-username {
+                flex: 1;
+                font-weight: 600;
+                font-size: 0.95rem;
+            }
+            .pending-actions {
+                display: flex;
+                gap: 8px;
+            }
         `;
 
         return html`
@@ -358,6 +406,30 @@ export class ProfilePage extends LitElement {
                         <button @click=${() => window.location.hash = '/profile/edit'}>
                             <img src="${EditIcon}" alt="Edit Profile" width="16" height="16" />
                         </button>
+                    </div>
+                ` : ''}
+
+                ${this.isOwnProfile && this.pendingRequests.length > 0 ? html`
+                    <div class="pending-requests">
+                        <h4>Friend Requests (${this.pendingRequests.length})</h4>
+                        ${this.pendingRequests.map(r => html`
+                            <div class="pending-request-row">
+                                <img class="pending-avatar"
+                                    src="${r.avatarUrl || 'https://t3.ftcdn.net/jpg/02/22/85/16/360_F_222851624_jfoMGbJxwRi5AWGdPgXKSABMnzCQo9RN.jpg'}"
+                                    alt="${r.username}" />
+                                <span class="pending-username">@${r.username}</span>
+                                <div class="pending-actions">
+                                    <button class="friend-btn friend-btn--accept"
+                                        @click=${() => this.handleRespondPending(r.requestId, 'accepted')}>
+                                        Accept
+                                    </button>
+                                    <button class="friend-btn friend-btn--decline"
+                                        @click=${() => this.handleRespondPending(r.requestId, 'declined')}>
+                                        Decline
+                                    </button>
+                                </div>
+                            </div>
+                        `)}
                     </div>
                 ` : ''}
 

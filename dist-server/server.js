@@ -1130,6 +1130,29 @@ app.post('/api/friends/request', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+// GET /api/friends/pending?user_id=X — incoming pending requests for this user
+app.get('/api/friends/pending', async (req, res) => {
+    const userId = Number(req.query.user_id);
+    if (!Number.isInteger(userId) || userId < 1)
+        return res.status(400).json({ error: 'valid user_id is required' });
+    try {
+        const [rows] = await pool.query(`SELECT f.id AS request_id, u.id, u.username, u.avatar_url
+       FROM friendships f
+       JOIN users u ON u.id = f.requester_id
+       WHERE f.addressee_id = ? AND f.status = 'pending'`, [userId]);
+        const requests = (Array.isArray(rows) ? rows : []).map(r => ({
+            requestId: r.request_id,
+            id: r.id,
+            username: r.username,
+            avatarUrl: r.avatar_url ?? null,
+        }));
+        res.json(requests);
+    }
+    catch (e) {
+        console.error('get pending friend requests error', e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 // GET /api/friends?user_id=X — accepted friends with profile info
 app.get('/api/friends', async (req, res) => {
     const userId = Number(req.query.user_id);

@@ -552,6 +552,13 @@ export type FriendUser = {
   avatarUrl: string | null;
 };
 
+export type PendingFriendRequest = {
+  requestId: number;
+  id: number;
+  username: string;
+  avatarUrl: string | null;
+};
+
 export async function getFriendshipStatus(userId: number, otherUserId: number): Promise<FriendshipInfo> {
   const res = await fetch(`${API_BASE}/api/friends/status?user_id=${userId}&other_user_id=${otherUserId}`);
   const raw = await res.text();
@@ -572,6 +579,12 @@ export async function sendFriendRequest(toUserId: number): Promise<{ success: bo
 
 export async function getFriends(userId: number): Promise<FriendUser[]> {
   const res = await fetch(`${API_BASE}/api/friends?user_id=${userId}`);
+  const raw = await res.text();
+  return handleResponse(raw, res) ?? [];
+}
+
+export async function getPendingFriendRequests(userId: number): Promise<PendingFriendRequest[]> {
+  const res = await fetch(`${API_BASE}/api/friends/pending?user_id=${userId}`);
   const raw = await res.text();
   return handleResponse(raw, res) ?? [];
 }
