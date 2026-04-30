@@ -231,7 +231,9 @@ class BookInfoModal extends LitElement {
               <div class="book-meta">
                 ${book.published_year ? html`<span class="meta-chip">${book.published_year}</span>` : ''}
                 ${book.average_rating ? html`<span class="meta-chip">★ ${Number(book.average_rating).toFixed(1)}</span>` : ''}
-                ${book.categories ? html`<span class="meta-chip">${book.categories.split(',')[0].trim()}</span>` : ''}
+                ${book.categories
+                  ? book.categories.split(',').slice(0, 3).map(g => html`<span class="meta-chip">${g.trim()}</span>`)
+                  : ''}
               </div>
               ${book.description ? html`<p class="book-description">${book.description}</p>` : ''}
             </div>
