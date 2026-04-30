@@ -1,2 +1,1 @@
-ALTER TABLE litera.users ADD COLUMN avatar_url VARCHAR(1024) DEFAULT NULL;
-
+UPDATE users SET role = 'admin' WHERE username = 'your_username';

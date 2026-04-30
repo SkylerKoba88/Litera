@@ -272,6 +272,12 @@ export type BookRecord = {
   average_rating: number | null;
 };
 
+export async function fetchBookGenres(): Promise<string[]> {
+  const res = await fetch(`${API_BASE}/api/books/genres`);
+  const raw = await res.text();
+  return handleResponse(raw, res);
+}
+
 export async function createBook(book: {
   title: string;
   authors: string;
@@ -279,6 +285,7 @@ export async function createBook(book: {
   thumbnail?: string;
   published_year?: number;
   description?: string;
+  categories?: string;
 }): Promise<BookRecord> {
   const res = await fetch(`${API_BASE}/api/books`, {
     method: 'POST',

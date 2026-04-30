@@ -18,6 +18,7 @@ import {
     createUserShelf,
     updateUserShelf,
     createBook,
+    fetchBookGenres,
     type BookRecord,
     type CommunityRead,
     type UserShelf,
@@ -56,6 +57,9 @@ export class LibrariesPage extends LitElement {
     @state() private addBookIsbn = '';
     @state() private addBookThumbnail = '';
     @state() private addBookYear = '';
+    @state() private addBookDescription = '';
+    @state() private addBookCategories: string[] = [];
+    @state() private availableGenres: string[] = [];
     @state() private addingBook = false;
     @state() private addBookError = '';
 
@@ -340,6 +344,43 @@ export class LibrariesPage extends LitElement {
         .btn-add-book:hover { opacity: 0.85; }
 
         .add-book-error { color: #c0392b; font-size: 0.85rem; margin: 8px 0 0; }
+
+        .form-field textarea {
+            padding: 9px 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 80px;
+        }
+        .form-field textarea:focus { outline: none; border-color: var(--color-4); }
+
+        .genre-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin-top: 2px;
+        }
+        .genre-chip {
+            padding: 5px 12px;
+            border-radius: 20px;
+            border: 1.5px solid #ccc;
+            background: white;
+            color: #555;
+            font-size: 0.82rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: border-color 100ms, background 100ms, color 100ms;
+            user-select: none;
+        }
+        .genre-chip:hover { border-color: var(--color-4); color: var(--color-4); }
+        .genre-chip.selected {
+            background: var(--color-4);
+            border-color: var(--color-4);
+            color: white;
+        }
+        .genre-chips-empty { color: #aaa; font-size: 0.85rem; font-style: italic; }
     `;
 
     connectedCallback(): void {
@@ -506,15 +547,20 @@ export class LibrariesPage extends LitElement {
         }
     }
 
-    private openAddBookForm(context: 'creator' | 'editor') {
+    private async openAddBookForm(context: 'creator' | 'editor') {
         this.addBookContext = context;
         this.addBookTitle = '';
         this.addBookAuthors = '';
         this.addBookIsbn = '';
         this.addBookThumbnail = '';
         this.addBookYear = '';
+        this.addBookDescription = '';
+        this.addBookCategories = [];
         this.addBookError = '';
         this.showAddBookForm = true;
+        if (this.availableGenres.length === 0) {
+            try { this.availableGenres = await fetchBookGenres(); } catch { /* ignore */ }
+        }
     }
 
     private async handleAddBook() {
@@ -531,6 +577,8 @@ export class LibrariesPage extends LitElement {
                 isbn13: this.addBookIsbn.trim() || undefined,
                 thumbnail: this.addBookThumbnail.trim() || undefined,
                 published_year: this.addBookYear ? Number(this.addBookYear) : undefined,
+                description: this.addBookDescription.trim() || undefined,
+                categories: this.addBookCategories.length ? this.addBookCategories.join(', ') : undefined,
             });
             this.books = [...this.books, newBook];
             if (this.addBookContext === 'creator') {
@@ -582,6 +630,32 @@ export class LibrariesPage extends LitElement {
                 <input type="number" .value=${this.addBookYear}
                     @input=${(e: Event) => { this.addBookYear = (e.target as HTMLInputElement).value; }}
                     placeholder="e.g. 1925" min="1000" max="2100" />
+            </div>
+            <div class="form-field">
+                <label>Description <span style="color:#999;font-weight:400;">(optional)</span></label>
+                <textarea .value=${this.addBookDescription}
+                    @input=${(e: Event) => { this.addBookDescription = (e.target as HTMLTextAreaElement).value; }}
+                    placeholder="A brief summary of the book..."></textarea>
+            </div>
+            <div class="form-field">
+                <label>Genres <span style="color:#999;font-weight:400;">(optional)</span></label>
+                ${this.availableGenres.length === 0
+                    ? html`<p class="genre-chips-empty">No genres in the library yet.</p>`
+                    : html`
+                        <div class="genre-chips">
+                            ${this.availableGenres.map(g => html`
+                                <button
+                                    type="button"
+                                    class="genre-chip ${this.addBookCategories.includes(g) ? 'selected' : ''}"
+                                    @click=${() => {
+                                        this.addBookCategories = this.addBookCategories.includes(g)
+                                            ? this.addBookCategories.filter(c => c !== g)
+                                            : [...this.addBookCategories, g];
+                                    }}
+                                >${g}</button>
+                            `)}
+                        </div>
+                    `}
             </div>
             ${this.addBookError ? html`<p class="add-book-error">${this.addBookError}</p>` : null}
             <div class="modal-actions">

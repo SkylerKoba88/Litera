@@ -1060,7 +1060,7 @@ app.post('/api/communities/:id/books', async (req, res) => {
 
 // Add a new book manually (used when the book isn't found in the library)
 app.post('/api/books', async (req, res) => {
-  const { title, authors, isbn13, thumbnail, published_year, description } = req.body || {};
+  const { title, authors, isbn13, thumbnail, published_year, description, categories } = req.body || {};
 
   if (!title?.trim()) return res.status(400).json({ error: 'title is required' });
   if (!authors?.trim()) return res.status(400).json({ error: 'authors is required' });
@@ -1070,8 +1070,8 @@ app.post('/api/books', async (req, res) => {
 
   try {
     const [result] = await pool.query<mysql.ResultSetHeader>(
-      `INSERT INTO books (isbn13, title, authors, thumbnail, published_year, description)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO books (isbn13, title, authors, thumbnail, published_year, description, categories)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         isbn.slice(0, 13),
         title.trim(),
@@ -1079,6 +1079,7 @@ app.post('/api/books', async (req, res) => {
         thumbnail?.trim() || null,
         published_year ? Number(published_year) : null,
         description?.trim() || null,
+        categories?.trim() || null,
       ]
     );
     const [rows] = await pool.query('SELECT * FROM books WHERE id = ? LIMIT 1', [result.insertId]);
@@ -1099,7 +1100,26 @@ app.get('/api/books', async (_req, res) => {
   }
 });
 
-// Must be defined before /api/books/:id so Express doesn't treat "popular" as an id param
+// Must be defined before /api/books/:id so Express doesn't treat "popular" or "genres" as id params
+app.get('/api/books/genres', async (_req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT DISTINCT categories FROM books WHERE categories IS NOT NULL AND categories != ""');
+    const genres = new Set<string>();
+    for (const row of rows as any[]) {
+      if (row.categories) {
+        row.categories.split(',').forEach((g: string) => {
+          const trimmed = g.trim();
+          if (trimmed) genres.add(trimmed);
+        });
+      }
+    }
+    res.json([...genres].sort());
+  } catch (e) {
+    console.error('fetch genres error', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.get('/api/books/popular', async (_req, res) => {
   try {
     const [rows] = await pool.query(
