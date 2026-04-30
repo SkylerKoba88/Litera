@@ -660,6 +660,47 @@ export class CommunityDetailPage extends LitElement {
         height: 106px;
       }
     }
+
+        /* Color preview */
+    .options {
+      display: flex;
+      gap: var(--spacing-6);
+      flex-wrap: wrap;
+      margin-bottom: var(--spacing-4);
+    }
+    .options label {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-1);
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .options label input {
+      appearance: none;
+      display: none;
+    }
+
+    .color-preview {
+      display: flex;
+      margin-top: var(--spacing-2);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+      cursor: pointer;
+    }
+
+    .color-block {
+      width: 25px;
+      height: 25px;
+    }
+
+    .options label input:checked ~ div.color-preview {
+        outline: 2px solid var(--color-6);
+    }
+    .options label:has(input:checked) {
+      font-weight: bold;
+      color: var(--color-6);
+    }
   `;
 
   connectedCallback() {
@@ -852,6 +893,19 @@ export class CommunityDetailPage extends LitElement {
       console.error('Failed to delete community', e);
     }
   }
+  
+  private createColorPreview = (scheme: string) => {
+      const s = SCHEMES[scheme] ?? SCHEMES['default'];
+      return html`
+        <div class="color-preview">
+          <div class="color-block" style="background-color: ${s.deep}; border-radius: var(--radius-md) 0px 0px var(--radius-md);"></div>
+          <div class="color-block" style="background-color: ${s.mid};"></div>
+          <div class="color-block" style="background-color: ${s.light};"></div>
+          <div class="color-block" style="background-color: ${s.textLight};"></div>
+          <div class="color-block" style="background-color: ${s.textDark}; border-radius: 0px var(--radius-md) var(--radius-md) 0px;"></div>
+        </div>
+      `;
+    };
 
   private renderActionButton(): TemplateResult {
     const user = getCurrentUser();
@@ -1008,13 +1062,28 @@ export class CommunityDetailPage extends LitElement {
 
           <div class="form-field">
             <label>Color Scheme</label>
-            <select @change=${(e: Event) => { this.editColorScheme = (e.target as HTMLSelectElement).value; }}>
-              <option value="default" ?selected=${this.editColorScheme === 'default'}>Default</option>
-              <option value="dark" ?selected=${this.editColorScheme === 'dark'}>Dark</option>
-              <option value="ocean" ?selected=${this.editColorScheme === 'ocean'}>Ocean</option>
-              <option value="forest" ?selected=${this.editColorScheme === 'forest'}>Forest</option>
-              <option value="sunset" ?selected=${this.editColorScheme === 'sunset'}>Sunset</option>
-            </select>
+            <div class="options">
+              <label>
+                <input type="radio" name="colorScheme" value="default" @change=${(e: Event) => { this.editColorScheme = (e.target as HTMLInputElement).value; }} />Default
+                ${this.createColorPreview('default')}
+              </label>
+              <label>
+                <input type="radio" name="colorScheme" value="dark" @change=${(e: Event) => { this.editColorScheme = (e.target as HTMLInputElement).value; }} />Dark
+                ${this.createColorPreview('dark')}
+              </label>
+              <label>
+                <input type="radio" name="colorScheme" value="ocean" @change=${(e: Event) => { this.editColorScheme = (e.target as HTMLInputElement).value; }} />Ocean
+                ${this.createColorPreview('ocean')}
+              </label>
+              <label>
+                <input type="radio" name="colorScheme" value="forest" @change=${(e: Event) => { this.editColorScheme = (e.target as HTMLInputElement).value; }} />Forest
+                ${this.createColorPreview('forest')}
+              </label>
+              <label>
+                <input type="radio" name="colorScheme" value="sunset" @change=${(e: Event) => { this.editColorScheme = (e.target as HTMLInputElement).value; }} />Sunset
+                ${this.createColorPreview('sunset')}
+              </label>
+            </div>
           </div>
 
           <div class="form-field">

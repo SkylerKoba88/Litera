@@ -7,6 +7,14 @@ import '../components/AddMembersModal.js';
 import type { PillButton } from '../components/PillButton.ts';
 import { VALID_CATEGORIES, formatCategoryName } from '../constants.js';
 
+const SCHEMES: Record<string, { deep: string; mid: string; light: string; textLight: string; textDark: string }> = {
+  default: { deep: '#414833', mid: '#646d4a', light: '#ece0d5', textLight: '#fbfff4', textDark: '#2d2a26' },
+  dark:    { deep: '#1c1c1e', mid: '#3a3a3c', light: '#d1d1d6', textLight: '#f5f5f7', textDark: '#1c1c1e' },
+  ocean:   { deep: '#0d2137', mid: '#1a4a6e', light: '#cde8f5', textLight: '#e8f4fd', textDark: '#0d2137' },
+  forest:  { deep: '#1e3a2f', mid: '#2d6a4f', light: '#d8f3dc', textLight: '#f0fdf4', textDark: '#1e3a2f' },
+  sunset:  { deep: '#4a1942', mid: '#a0522d', light: '#fde8e0', textLight: '#fdf4f0', textDark: '#3d1a18' },
+};
+
 interface ComProps {
   currentPath?: string;
 }
@@ -23,26 +31,26 @@ export const CommunityCreationPage = ({
     /* Banner */
     .banner {
       background-color: var(--color-5);
-      margin: 24px auto;
+      margin: var(--spacing-6) auto;
       text-align: center;
       color: white;
       width: fit-content;
-      border-radius: 12px;
+      border-radius: var(--radius-md);
     }
 
     .banner h1 {
-      padding: 24px 64px;
-      margin: 0;
+      padding: var(--spacing-6) var(--spacing-8);
+      margin: var(--spacing-0);
     }
 
     /* Main content wrapper */
     .content {
       justify-items: center;
-      margin: 0px 120px;
+      margin: var(--spacing-0) var(--spacing-20);
     }
 
     .subsec {
-      margin-bottom: 56px;
+      margin-bottom: var(--spacing-5);
       width: 100%;
     }
 
@@ -50,16 +58,16 @@ export const CommunityCreationPage = ({
     .subhead {
       display: flex;
       align-items: center;
-      gap: 24px;
-      margin-left: 48px;
-      margin-bottom: 16px;
+      gap: var(--spacing-6);
+      margin-left: var(--spacing-12);
+      margin-bottom: var(--spacing-2);
     }
 
     .num {
       background-color: var(--color-4);
       width: 48px;
       height: 48px;
-      border-radius: 50%;
+      border-radius: var(--radius-full);
       color: white;
       display: grid;
       place-items: center;
@@ -70,22 +78,22 @@ export const CommunityCreationPage = ({
     .inputs {
       display: flex;
       flex-wrap: wrap;
-      gap: 24px;
-      margin: 0px 48px;
-      padding-left: 48px;
+      gap: var(--spacing-6);
+      margin: 0px var(--spacing-12);
+      padding-left: var(--spacing-12);
     }
 
     .label {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: var(--spacing-0);
     }
 
     input, select {
-      padding: 10px 12px;
-      border-radius: 8px;
+      padding: var(--spacing-2) var(--spacing-4);
+      border-radius: var(--radius-md);
       border: 1px solid #ccc;
-      font-size: 0.95rem;
+      font-size: var(--font-size-sm);
     }
 
     input[type="checkbox"] {
@@ -95,28 +103,67 @@ export const CommunityCreationPage = ({
     .rules {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px 24px;
+      gap: var(--spacing-4) var(--spacing-6);
     }
 
     /* Footer button */
     .submit {
       display: flex;
       justify-content: flex-end;
-      margin: 48px 120px 96px;
+      margin: var(--spacing-12) var(--spacing-20) var(--spacing-16);
     }
 
     button {
       background-color: var(--color-4);
       color: white;
-      padding: 12px 32px;
-      border-radius: 10px;
+      padding: var(--spacing-4) var(--spacing-16);
+      border-radius: var(--radius-md);
       border: none;
       cursor: pointer;
-      font-size: 1rem;
+      font-size: var(--font-size-base);
     }
 
     button:hover {
       opacity: 0.9;
+    }
+
+    /* Color preview */
+    .options {
+      display: flex;
+      gap: var(--spacing-6);
+    }
+    .options label {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-1);
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .options label input {
+      appearance: none;
+      display: none;
+    }
+
+    .color-preview {
+      display: flex;
+      margin-top: var(--spacing-2);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+      cursor: pointer;
+    }
+
+    .color-block {
+      width: 25px;
+      height: 25px;
+    }
+
+    .options label input:checked ~ div.color-preview {
+        outline: 2px solid var(--color-6);
+    }
+    .options label:has(input:checked) {
+      font-weight: bold;
+      color: var(--color-6);
     }
   `;
 
@@ -191,6 +238,29 @@ export const CommunityCreationPage = ({
     } catch(e) {
       console.error(e);
     }
+  };
+
+  const _applyScheme = () => {
+    const s = SCHEMES[colorSchemeValue ?? 'default'] ?? SCHEMES['default'];
+    document.documentElement.style.setProperty('--cs-deep', s.deep);
+    document.documentElement.style.setProperty('--cs-mid', s.mid);
+    document.documentElement.style.setProperty('--cs-light', s.light);
+    document.documentElement.style.setProperty('--cs-text-light', s.textLight);
+    document.documentElement.style.setProperty('--cs-text-dark', s.textDark);
+  };
+  _applyScheme();
+
+  const createColorPreview = (scheme: string) => {
+    const s = SCHEMES[scheme] ?? SCHEMES['default'];
+    return html`
+      <div class="color-preview">
+        <div class="color-block" style="background-color: ${s.deep}; border-radius: var(--radius-md) 0px 0px var(--radius-md);"></div>
+        <div class="color-block" style="background-color: ${s.mid};"></div>
+        <div class="color-block" style="background-color: ${s.light};"></div>
+        <div class="color-block" style="background-color: ${s.textLight};"></div>
+        <div class="color-block" style="background-color: ${s.textDark}; border-radius: 0px var(--radius-md) var(--radius-md) 0px;"></div>
+      </div>
+    `;
   };
 
   return html`
@@ -293,15 +363,30 @@ export const CommunityCreationPage = ({
         </div>
 
         <div class="inputs">
-          <div class="label">
+          <div class="pickColor">
             <h5>Color Scheme</h5>
-            <select name="colorScheme" @change=${(e: Event) => { colorSchemeValue = (e.target as HTMLSelectElement).value; }}>
-              <option value="default">Default</option>
-              <option value="dark">Dark</option>
-              <option value="ocean">Ocean</option>
-              <option value="forest">Forest</option>
-              <option value="sunset">Sunset</option>
-            </select>
+            <div class="options">
+              <label>
+                <input type="radio" name="colorScheme" value="default" @select=${(e: Event) => { colorSchemeValue = (e.target as HTMLInputElement).value; _applyScheme(); }} />Default
+                ${createColorPreview('default')}
+              </label>
+              <label>
+                <input type="radio" name="colorScheme" value="dark" @change=${(e: Event) => { colorSchemeValue = (e.target as HTMLInputElement).value; _applyScheme(); }} />Dark
+                ${createColorPreview('dark')}
+              </label>
+              <label>
+                <input type="radio" name="colorScheme" value="ocean" @change=${(e: Event) => { colorSchemeValue = (e.target as HTMLInputElement).value; _applyScheme(); }} />Ocean
+                ${createColorPreview('ocean')}
+              </label>
+              <label>
+                <input type="radio" name="colorScheme" value="forest" @change=${(e: Event) => { colorSchemeValue = (e.target as HTMLInputElement).value; _applyScheme(); }} />Forest
+                ${createColorPreview('forest')}
+              </label>
+              <label>
+                <input type="radio" name="colorScheme" value="sunset" @change=${(e: Event) => { colorSchemeValue = (e.target as HTMLInputElement).value; _applyScheme(); }} />Sunset
+                ${createColorPreview('sunset')}
+              </label>
+            </div>
           </div>
 
           <div class="label">
