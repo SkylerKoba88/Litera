@@ -78,6 +78,14 @@ class SearchBar extends LitElement {
         flex-shrink: 0;
     }
     .clear-btn:hover { background: rgba(0,0,0,0.22); }
+
+    @media (max-width: 640px) {
+      :host {
+        max-width: 100%;
+        padding: 0 16px;
+        box-sizing: border-box;
+      }
+    }
   `;
 
   constructor() {

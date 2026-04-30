@@ -891,7 +891,7 @@ app.post('/api/communities/:id/books', async (req, res) => {
 // ----------- BOOK ROUTES --------------
 // Add a new book manually (used when the book isn't found in the library)
 app.post('/api/books', async (req, res) => {
-    const { title, authors, isbn13, thumbnail, published_year, description } = req.body || {};
+    const { title, authors, isbn13, thumbnail, published_year, description, categories } = req.body || {};
     if (!title?.trim())
         return res.status(400).json({ error: 'title is required' });
     if (!authors?.trim())
@@ -899,14 +899,15 @@ app.post('/api/books', async (req, res) => {
     // Auto-generate a placeholder isbn13 if not supplied (field is NOT NULL, max 13 chars)
     const isbn = isbn13?.trim() || `USR${Date.now().toString().slice(-10)}`;
     try {
-        const [result] = await pool.query(`INSERT INTO books (isbn13, title, authors, thumbnail, published_year, description)
-       VALUES (?, ?, ?, ?, ?, ?)`, [
+        const [result] = await pool.query(`INSERT INTO books (isbn13, title, authors, thumbnail, published_year, description, categories)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`, [
             isbn.slice(0, 13),
             title.trim(),
             authors.trim(),
             thumbnail?.trim() || null,
             published_year ? Number(published_year) : null,
             description?.trim() || null,
+            categories?.trim() || null,
         ]);
         const [rows] = await pool.query('SELECT * FROM books WHERE id = ? LIMIT 1', [result.insertId]);
         res.status(201).json(Array.isArray(rows) && rows.length ? rows[0] : null);
@@ -926,7 +927,27 @@ app.get('/api/books', async (_req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
-// Must be defined before /api/books/:id so Express doesn't treat "popular" as an id param
+// Must be defined before /api/books/:id so Express doesn't treat "popular" or "genres" as id params
+app.get('/api/books/genres', async (_req, res) => {
+    try {
+        const [rows] = await pool.query('SELECT DISTINCT categories FROM books WHERE categories IS NOT NULL AND categories != ""');
+        const genres = new Set();
+        for (const row of rows) {
+            if (row.categories) {
+                row.categories.split(',').forEach((g) => {
+                    const trimmed = g.trim();
+                    if (trimmed)
+                        genres.add(trimmed);
+                });
+            }
+        }
+        res.json([...genres].sort());
+    }
+    catch (e) {
+        console.error('fetch genres error', e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 app.get('/api/books/popular', async (_req, res) => {
     try {
         const [rows] = await pool.query(`SELECT b.*, COUNT(uf.book_id) AS favorite_count

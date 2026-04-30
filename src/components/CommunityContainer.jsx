@@ -28,6 +28,17 @@ class CommunityContainer extends LitElement {
         ::slotted(*){
             padding: 1em 1em 1em 0em;
         }
+
+        @media (max-width: 640px) {
+            .card {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            ::slotted(*) {
+                padding: 0;
+            }
+        }
         `;
     }
 

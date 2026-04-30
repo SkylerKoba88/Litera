@@ -28,7 +28,7 @@ class CommunityCard extends LitElement {
                 flex-direction: column;
                 overflow: hidden;
                 width: 15em;
-                height: 10em;
+                height: 12.5em;
                 transition: ease-out .2s;
                 box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
                 border-radius: 8px;
@@ -70,6 +70,10 @@ class CommunityCard extends LitElement {
 
             h3{
                 margin: .5em;
+                overflow: hidden;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
                 transition: ease-out .2s;
             }
 
@@ -84,6 +88,16 @@ class CommunityCard extends LitElement {
                 height: auto;
                 max-width: 100%;
                 margin: auto;
+            }
+
+            @media (max-width: 640px) {
+                :host {
+                    width: 100%;
+                    height: 10em;
+                }
+                .top {
+                    flex: 1;
+                }
             }
 
         `;

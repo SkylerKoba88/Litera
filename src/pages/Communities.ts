@@ -130,6 +130,11 @@ export class CommunitiesPage extends LitElement {
             .add-community-btn .icon-hover { display: none; }
             .add-community-btn:hover .icon-default { display: none; }
             .add-community-btn:hover .icon-hover { display: block; }
+            @media (max-width: 640px) {
+                div.page-content { padding: 0 16px; }
+                .search-wrap { padding: 0 16px; }
+                div.banner { padding: 0 16px; width: auto; }
+            }
         `;
 
         if (this.loading) {

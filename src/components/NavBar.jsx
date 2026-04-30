@@ -35,7 +35,8 @@ class NavBar extends LitElement {
             currentPath: { type: String },
             onNavigate: { attribute: false},
             user: { attribute: false},
-            hoveredTab: { type: String }
+            hoveredTab: { type: String },
+            mobileMenuOpen: { type: Boolean }
         };
     }
 
@@ -47,6 +48,7 @@ class NavBar extends LitElement {
         };
         this.user = getCurrentUser();
         this.hoveredTab = null;
+        this.mobileMenuOpen = false;
     }
 
     connectedCallback() {
@@ -62,14 +64,6 @@ class NavBar extends LitElement {
     disconnectedCallback() {
         window.removeEventListener('auth-changed', this._onAuthChanged);
         super.disconnectedCallback();
-    }
-
-    handleSubAction(action) {
-        if (action === 'logout') {
-            logout();
-            this.user = null;
-            window.location.hash = '/';
-        }
     }
 
     _goProfile() {
@@ -206,6 +200,72 @@ class NavBar extends LitElement {
                 font-size: 1.5rem;
                 font-weight: 600;
             }
+            .hamburger {
+                display: none;
+                flex-direction: column;
+                justify-content: space-between;
+                width: 28px;
+                height: 20px;
+                background: transparent;
+                border: none;
+                padding: 0;
+                cursor: pointer;
+                border-radius: 0;
+            }
+            .hamburger:hover {
+                background: transparent;
+                transform: none;
+            }
+            .hamburger span {
+                display: block;
+                width: 100%;
+                height: 3px;
+                background: white;
+                border-radius: 2px;
+                transition: all 0.3s ease;
+            }
+            .hamburger.open span:nth-child(1) {
+                transform: translateY(8.5px) rotate(45deg);
+            }
+            .hamburger.open span:nth-child(2) {
+                opacity: 0;
+            }
+            .hamburger.open span:nth-child(3) {
+                transform: translateY(-8.5px) rotate(-45deg);
+            }
+            .mobile-menu {
+                display: none;
+                flex-direction: column;
+                background: linear-gradient(135deg, var(--color-4) 0%, var(--color-5) 100%);
+                padding: 8px 0 16px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            }
+            .mobile-menu.open {
+                display: flex;
+            }
+            .mobile-menu button {
+                width: 100%;
+                padding: 14px 32px;
+                justify-content: flex-start;
+                border-radius: 0;
+                font-size: 1rem;
+            }
+            .mobile-menu button.active {
+                background-color: rgba(255, 255, 255, 0.2);
+            }
+            .mobile-subtabs button {
+                padding-left: 56px;
+                font-size: 0.9rem;
+                opacity: 0.85;
+            }
+            @media (max-width: 640px) {
+                #right {
+                    display: none;
+                }
+                .hamburger {
+                    display: flex;
+                }
+            }
         `;
     }
 
@@ -240,19 +300,19 @@ class NavBar extends LitElement {
         }
     }
 
+    _closeMobileMenu() {
+        this.mobileMenuOpen = false;
+    }
+
     render() {
         return html `
             <nav id="container">
                 <div id="left">
                     <img class="site-icon" src=${BookCaseIcon} alt="Bookcase Icon" style="width: 40px; height: 40px;">
-                    <!--<img src="https://ik.imagekit.io/kjonesLitera/Disco.png?updatedAt=1771898369768">-->
                     <h2>Litera</h2>
                 </div>
                 <div id="right">
-                    ${NAV_LINKS
-                    .map(
-                        link =>
-                        html`
+                    ${NAV_LINKS.map(link => html`
                         <div class="nav-item"
                             @mouseenter=${() => (this.hoveredTab = link.name)}
                             @mouseleave=${() => (this.hoveredTab = null)}
@@ -274,17 +334,57 @@ class NavBar extends LitElement {
                                 ${link.name === 'profile' && !this.user ? 'login' : link.name}
                             </button>
 
-                            ${this.hoveredTab === link.name && 
+                            ${this.hoveredTab === link.name &&
                             (link.name !== 'profile' || this.user)
                                     ? this.showSubTabs(link.name)
                                     : null}
-
                         </div>
-                            
-                        `
-                    )}
+                    `)}
                 </div>
+                <button
+                    class=${'hamburger' + (this.mobileMenuOpen ? ' open' : '')}
+                    aria-label="Toggle menu"
+                    aria-expanded=${this.mobileMenuOpen}
+                    @click=${() => { this.mobileMenuOpen = !this.mobileMenuOpen; }}
+                >
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
             </nav>
+            <div class=${'mobile-menu' + (this.mobileMenuOpen ? ' open' : '')}>
+                ${NAV_LINKS.map(link => html`
+                    <button
+                        class=${this._isActive(link.path) ? 'active' : ''}
+                        @click=${() => {
+                            if (link.name === 'profile') {
+                                this._goProfile();
+                            } else {
+                                this._go(link.path);
+                            }
+                            this._closeMobileMenu();
+                        }}
+                        aria-current=${this._isActive(link.path) ? 'page' : 'false'}
+                    >
+                        ${link.name === 'profile' && this.user?.avatarUrl
+                            ? html`<img src=${this.user.avatarUrl} alt="avatar" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; margin-right: 8px; border: 2px solid rgba(255,255,255,0.6); filter: none;">`
+                            : html`<img src=${link.icon} alt=${link.name} style="width: 20px; height: 20px; margin-right: 8px;">`}
+                        ${link.name === 'profile' && !this.user ? 'login' : link.name}
+                    </button>
+                    ${SUB_TABS[link.name] && (link.name !== 'profile' || this.user)
+                        ? html`<div class="mobile-subtabs">
+                            ${SUB_TABS[link.name].map(sub => html`
+                                <button @click=${() => {
+                                    sub.path ? this._go(sub.path) : this.handleSubAction(sub.action);
+                                    this._closeMobileMenu();
+                                }}>
+                                    ${sub.name}
+                                </button>
+                            `)}
+                          </div>`
+                        : null}
+                `)}
+            </div>
         `
     }
 }

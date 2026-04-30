@@ -213,6 +213,25 @@ class BookCard extends LitElement {
             .b7 { background: var(--color-4); animation-name: bw;  animation-delay: 0s;     }
             .b8 { background: var(--color-5); animation-name: bnw; animation-delay: 0.04s;  }
 
+            @media (max-width: 640px) {
+                :host {
+                    display: block;
+                    width: 100%;
+                }
+                .book {
+                    width: 100%;
+                    height: 10em;
+                    box-sizing: border-box;
+                }
+                .book::after {
+                    width: calc(100% - 8px);
+                }
+                h3 {
+                    font-size: 1em;
+                    width: calc(100% - 3.5em);
+                }
+            }
+
         `;
     }
 

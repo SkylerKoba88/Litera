@@ -98,6 +98,12 @@ export class LibrariesPage extends LitElement {
             margin: 24px 0;
         }
 
+        @media (max-width: 640px) {
+            .page-content { padding: 0 16px; }
+            .search-wrap { padding: 0 16px; }
+            div.banner { padding: 0 16px; width: auto; }
+        }
+
         .section { margin: 24px 0; }
 
         .section-heading {
