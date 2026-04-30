@@ -29,7 +29,7 @@ class TitleHero extends LitElement {
                 color: white;
                 background-image: linear-gradient(
                     rgba(115, 6, 77, 0.8),
-                    rgba(67, 72, 51, 0.2)
+                    rgba(67, 72, 51, 0.6)
                 ),
                 url('src/images/heroGradient.svg');
                 background-size: cover;
