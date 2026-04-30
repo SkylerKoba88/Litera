@@ -197,6 +197,19 @@ export async function checkUniqueField(params: { username?: string; email?: stri
   return handleResponse(raw, res);
 }
 
+export async function deleteUser(id: number): Promise<{ success: boolean }> {
+  const user = getCurrentUser();
+  if (!user) throw new Error('User must be logged in to delete their account');
+
+  const res = await fetch(`${API_BASE}/api/users/${id}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requesting_user_id: user.id }),
+  });
+  const raw = await res.text();
+  return handleResponse(raw, res);
+}
+
 //Library management OOP implementation: Observer
 
 export type Book = {
@@ -394,19 +407,6 @@ export async function deleteCommunity(id: number): Promise<{ success: boolean }>
   if (!user) throw new Error('User must be logged in to delete a community');
 
   const res = await fetch(`${API_BASE}/api/communities/${id}`, {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ requesting_user_id: user.id }),
-  });
-  const raw = await res.text();
-  return handleResponse(raw, res);
-}
-
-export async function deleteUser(id: number): Promise<{ success: boolean }> {
-  const user = getCurrentUser();
-  if (!user) throw new Error('User must be logged in to delete their account');
-
-  const res = await fetch(`${API_BASE}/api/users/${id}`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ requesting_user_id: user.id }),

@@ -324,6 +324,28 @@ app.post('/api/auth/login', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+// delete user
+app.delete('/api/users/:id', async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1)
+        return res.status(400).json({
+            error: 'Invalid user id'
+        });
+    try {
+        const [result] = await pool.query(`
+      DELETE FROM users
+      WHERE id = ?
+      `, [id]);
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json({ success: true });
+    }
+    catch (e) {
+        console.error('delete user error', e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 // ----------- COMMUNITY ROUTES --------------
 // Normalise a DB row into the shape the client expects. Keeps GET list and
 // GET /:id consistent so we don't have to chase mismatched fields later.
