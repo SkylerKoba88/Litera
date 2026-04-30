@@ -156,7 +156,7 @@ export class ProfilePage extends LitElement {
     private openFriendsToast() {
         const cur = getCurrentUser();
         if (!cur) return;
-        const toast = document.querySelector('friends-toast') as any;
+        const toast = document.querySelector('app-root')?.shadowRoot?.querySelector('friends-toast') as any;
         if (toast) {
             toast.currentUserId = cur.id;
             toast.friends = this.friends;

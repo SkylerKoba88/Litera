@@ -150,13 +150,16 @@ export const ProfileEditPage = (_props: ProfileEditProps): TemplateResult => {
       }
     };
 
+    const getConfirmPanel = () =>
+      document.querySelector('app-root')?.shadowRoot?.querySelector('#delete-confirm-panel') as HTMLElement | null;
+
     const showDeleteConfirm = () => {
-      const panel = document.getElementById('delete-confirm-panel') as HTMLElement;
+      const panel = getConfirmPanel();
       if (panel) panel.style.display = 'flex';
     };
 
     const hideDeleteConfirm = () => {
-      const panel = document.getElementById('delete-confirm-panel') as HTMLElement;
+      const panel = getConfirmPanel();
       if (panel) panel.style.display = 'none';
     };
 
