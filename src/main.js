@@ -7,6 +7,7 @@ import './components/AppFooter.jsx';
 import './components/Hero.jsx';
 import './components/CommunityCard.jsx';
 import './components/BookCard.jsx';
+import './components/BookInfoModal.jsx';
 import './components/successAnimation.jsx';
 
 //pages

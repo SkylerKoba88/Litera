@@ -13,7 +13,7 @@ class BookCard extends LitElement {
             author: { type: String },
             thumbnail: { type: String },
             description: { type: String },
-            book: { type: String },
+            book: { type: Object },
             favorite: { type: Boolean },
             bookId: { type: Number },
             _bursting: { state: true },
@@ -125,6 +125,16 @@ class BookCard extends LitElement {
                 display: block;
             }
 
+            .info-btn {
+                background: transparent;
+                border: none;
+                padding: 0;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                line-height: 0;
+            }
+
             /* ── fav button wrapper (anchors burst to the heart) ──── */
             .fav-wrap {
                 position: relative;
@@ -206,6 +216,22 @@ class BookCard extends LitElement {
         `;
     }
 
+    openInfo(e) {
+        e.stopPropagation();
+        this.dispatchEvent(new CustomEvent('book-info', {
+            bubbles: true,
+            composed: true,
+            detail: {
+                book: this.book,
+                bookId: this.bookId,
+                title: this.title || this.name,
+                author: this.author,
+                thumbnail: this.thumbnail,
+                description: this.description,
+            }
+        }));
+    }
+
     toggleFavorite() {
         const adding = !this.favorite;
         this.favorite = adding;
@@ -234,11 +260,11 @@ class BookCard extends LitElement {
                 </svg>`;
 
         return html`
-            <div class="book ${this.favorite ? 'favorited' : ''}">
+            <div class="book ${this.favorite ? 'favorited' : ''}" @click=${(e) => this.openInfo(e)}>
                 <h3 class="title">${this.title || this.name || "Book Title"}</h3>
                 <div class="controls">
                     <div class="fav-wrap">
-                        <button class="fav-btn ${this._bursting ? 'pop' : ''}" @click=${() => this.toggleFavorite()}>
+                        <button class="fav-btn ${this._bursting ? 'pop' : ''}" @click=${(e) => { e.stopPropagation(); this.toggleFavorite(); }}>
                             ${heartIcon}
                         </button>
                         ${this._bursting ? html`
@@ -254,7 +280,9 @@ class BookCard extends LitElement {
                             </div>
                         ` : ''}
                     </div>
-                    <img src="${PointArrow}" alt="Info">
+                    <div class="info-btn">
+                        <img src="${PointArrow}" alt="Info">
+                    </div>
                 </div>
             </div>
         `;

@@ -5,6 +5,7 @@ import '../components/CommunityContainer.jsx';
 import '../components/BookCard.jsx';
 import '../components/Breadcrumb.jsx';
 import '../components/successAnimation.jsx';
+import '../components/BookInfoModal.jsx';
 import {
     getCurrentUser,
     fetchBooks,
@@ -34,6 +35,10 @@ export class LibrariesPage extends LitElement {
     @state() private loading = true;
     @state() private searchQuery = '';
     @state() private activeFilters: string[] = [];
+
+    // Book info modal state
+    @state() private showBookInfo = false;
+    @state() private bookInfoTarget: BookRecord | null = null;
 
     // Shelf creator state
     @state() private showShelfCreator = false;
@@ -421,6 +426,38 @@ export class LibrariesPage extends LitElement {
         }
     };
 
+    private handleBookInfo = (e: Event) => {
+        const { book } = (e as CustomEvent).detail;
+        if (book) {
+            this.bookInfoTarget = book;
+            this.showBookInfo = true;
+        }
+    };
+
+    private async handleShelfToggle(e: Event) {
+        const { shelf, book, bookId, add } = (e as CustomEvent).detail as {
+            shelf: UserShelf; book: BookRecord; bookId: number; add: boolean;
+        };
+        if (!shelf || !book) return;
+
+        const newBooks = add
+            ? [...shelf.books.filter(b => b.id !== bookId), book]
+            : shelf.books.filter(b => b.id !== bookId);
+
+        this.userShelves = this.userShelves.map(s =>
+            s.id === shelf.id ? { ...s, books: newBooks } : s
+        );
+
+        try {
+            await updateUserShelf(shelf.id, shelf.name, newBooks.map(b => b.id));
+        } catch (err) {
+            console.error('Failed to update shelf', err);
+            this.userShelves = this.userShelves.map(s =>
+                s.id === shelf.id ? shelf : s
+            );
+        }
+    }
+
     private renderBookCard(book: BookRecord): TemplateResult {
         return html`<book-card
             title="${book.title}"
@@ -428,7 +465,9 @@ export class LibrariesPage extends LitElement {
             thumbnail="${book.thumbnail ?? ''}"
             description="${book.description ?? ''}"
             .bookId=${book.id}
+            .book=${book}
             .favorite=${this.favoriteIds.has(book.id)}
+            @book-info=${this.handleBookInfo}
         ></book-card>`;
     }
 
@@ -794,6 +833,14 @@ export class LibrariesPage extends LitElement {
         return html`
             ${this.showShelfCreator ? this.renderShelfCreatorModal() : null}
             ${this.showShelfEditor ? this.renderShelfEditorModal() : null}
+            ${this.showBookInfo && this.bookInfoTarget ? html`
+                <book-info-modal
+                    .book=${this.bookInfoTarget}
+                    .shelves=${this.userShelves}
+                    @close=${() => { this.showBookInfo = false; }}
+                    @shelf-toggle=${this.handleShelfToggle.bind(this)}
+                ></book-info-modal>
+            ` : null}
 
             <success-animation></success-animation>
             <bread-crumb></bread-crumb>

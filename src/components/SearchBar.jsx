@@ -85,6 +85,8 @@ class SearchBar extends LitElement {
     this._query = '';
   }
 
+  _handleOutsideClick(_e) {}
+
   _dispatchSearch() {
     this.dispatchEvent(new CustomEvent('search-changed', {
       detail: { query: this._query, filters: [] },
